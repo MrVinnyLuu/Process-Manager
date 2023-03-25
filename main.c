@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <assert.h>
 #include "record.h"
+#include "heap.h"
 
 
 // ./allocate -f cases/task1/simple.txt -s RR -m best-fit -q 3

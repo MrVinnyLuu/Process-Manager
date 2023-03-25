@@ -7,7 +7,7 @@ CFLAGS = -Wall -g
 LIB = 
 
 # define sets of header source files and object files
-SRC = main.c record.c
+SRC = main.c record.c heap.c
 
 # OBJ is the same as SRC, just replace .c with .o
 OBJ = $(SRC:.c=.o)
