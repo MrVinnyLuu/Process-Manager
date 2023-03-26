@@ -31,14 +31,24 @@ int main(int argc, char** argv) {
         }
     }
 
+    // printf("file: %s\nscheduler: %s\nmemstrat: %s\nquantum: %s\n", filepath, scheduler, memStrat, quantum);
+
     FILE* f = fopen(filepath, "r");
     assert(f);
 
-    process_read(f);
+    heap_t* heap = heapInit();
+
+    process_t* proc;
+
+    while ((proc = processRead(f))) {
+        heapPush(heap, proc); 
+    }
+
+    for (int i = 1; i <= heap->n; i++) {
+        processPrint(heap->heap[i]);
+    }
 
     fclose(f);
-
-    // printf("file: %s\nscheduler: %s\nmemstrat: %s\nquantum: %s\n", filepath, scheduler, memStrat, quantum);
 
     free(filepath);
     free(scheduler);

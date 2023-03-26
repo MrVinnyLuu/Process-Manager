@@ -2,13 +2,19 @@
 #ifndef _HEAP_H_
 #define _HEAP_H_
 
-typedef struct heap heap_t;
+#include "record.h"
 
-heap_t* heapInit(size_t dataSize);
+typedef struct heap {
+    process_t** heap;
+    int n;
+    int size;
+} heap_t;
 
-void heapPush(heap_t* heap, void* data, int (*getKey)(void*));
+heap_t* heapInit();
 
-void* heapPop(heap_t* heap, int (*getKey)(void*));
+void heapPush(heap_t* heap, process_t* proc);
+
+process_t* heapPop(heap_t* heap);
 
 void heapShrink(heap_t* heap);
 

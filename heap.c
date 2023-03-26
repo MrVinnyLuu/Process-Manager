@@ -5,46 +5,38 @@
 #include <assert.h>
 #include "heap.h"
 
-#define INIT_SIZE 4
+#define INIT_SIZE 10
 
-struct heap {
-    void** heap;
-    int n;
-    int size;
-};
-
-heap_t* heapInit(size_t dataSize) {
+heap_t* heapInit() {
 
     heap_t* heap = malloc(sizeof(*heap));
     assert(heap);
 
-    heap->heap = malloc(INIT_SIZE * sizeof(dataSize));
-    // heap->heap = malloc(INIT_SIZE * sizeof(*(heap->heap)));
+    heap->heap = malloc(INIT_SIZE * sizeof(*(heap->heap)));
     assert(heap->heap);
 
     heap->n = 0;
     heap->size = INIT_SIZE;
 
-    heap->heap[0] = -1;
+    // heap->heap[0] = -1;
 
     return heap;
 
 }
 
-void heapPush(heap_t* heap, void* data, int (*getKey)(void*)) {
-    
+void heapPush(heap_t* heap, process_t* proc) {
     heap->n++;
 
-    heap->heap[heap->n] = data;
+    heap->heap[heap->n] = proc;
 
     int i = heap->n;
 
-    while (getKey(heap->heap[i/2]) > getKey(data)) {
+    while (i/2 != 0 && heap->heap[i/2]->serviceTime > proc->serviceTime) {
         heap->heap[i] = heap->heap[i/2];
         i /= 2;
     }
 
-    heap->heap[i] = data;
+    heap->heap[i] = proc;
 
     if (heap->n == heap->size) {
         heap->size *= 2;
@@ -54,21 +46,21 @@ void heapPush(heap_t* heap, void* data, int (*getKey)(void*)) {
 
 }
 
-void* heapPop(heap_t* heap, int (*getKey)(void*)) {
+process_t* heapPop(heap_t* heap) {
     
-    void* min = heap->heap[1];
-    void* last = heap->heap[heap->n--];
+    process_t* min = heap->heap[1];
+    process_t* last = heap->heap[heap->n--];
     int cur, child;
 
     for (cur = 1; cur*2 <= heap->n; cur = child) {
 
         child = cur*2;
 
-        if (child != heap->n && getKey(heap->heap[child+1]) < getKey(heap->heap[child])) {
+        if (child != heap->n && heap->heap[child+1]->serviceTime < heap->heap[child]->serviceTime) {
             child++;
         }
 
-        if (last > heap->heap[child]) {
+        if (last->serviceTime > heap->heap[child]->serviceTime) {
             heap->heap[cur] = heap->heap[child];
         } else {
             break;

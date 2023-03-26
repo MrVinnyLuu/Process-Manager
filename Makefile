@@ -4,7 +4,7 @@
 CC = gcc
 CFLAGS = -Wall -g
 # define libraries to be linked
-LIB = 
+LIB =
 
 # define sets of header source files and object files
 SRC = main.c record.c heap.c
@@ -16,7 +16,7 @@ OBJ = $(SRC:.c=.o)
 EXE = allocate
 
 # the first target:
-$(EXE): $(OBJ) 
+$(EXE): $(OBJ)
 	$(CC) $(CFLAGS) -o $(EXE) $(OBJ) $(LIB)
 
 clean:

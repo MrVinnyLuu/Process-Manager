@@ -4,8 +4,15 @@
 
 #include <stdio.h>
 
-typedef struct process process_t;
+typedef struct process {
+    int arrivalTime;
+    char* name;
+    int serviceTime;
+    int memoryRequirement;
+} process_t;
 
-void process_read(FILE* f);
+process_t* processRead(FILE* f);
+
+void processPrint(process_t* proc);
 
 #endif
