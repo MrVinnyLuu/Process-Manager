@@ -38,15 +38,46 @@ int main(int argc, char** argv) {
 
     heap_t* heap = heapInit();
 
-    process_t* proc;
+    process_t* proc = processRead(f);
+    process_t* curProc;
+
+    int curTime = proc->arrivalTime;
+
+    heapPush(heap, proc);
 
     while ((proc = processRead(f))) {
-        heapPush(heap, proc); 
+
+        if (proc->arrivalTime > curTime) {
+            
+            if (heap->n != 0) {
+                curProc = heapPop(heap);
+                processRunPrint(curProc, curTime, curProc->serviceTime);
+                curTime += curProc->serviceTime;
+            } else {
+                curTime = proc->arrivalTime;
+            }
+        }
+
+        processFinPrint(curProc,curTime,heap->n);
+        heapPush(heap, proc);
     }
 
-    for (int i = 1; i <= heap->n; i++) {
-        processPrint(heap->heap[i]);
+    while (heap->n != 0) {
+        process_t* curProc = heapPop(heap);
+        processRunPrint(curProc, curTime, curProc->serviceTime);
+        curTime += curProc->serviceTime;
+        processFinPrint(curProc,curTime,heap->n);
     }
+
+    // for (int i = 1; i <= heap->n; i++) {
+    //     processPrint(heap->heap[i]);
+    // }
+
+    // while (heap->n > 0) {
+    //     processPrint(heapPop(heap));
+    // }
+
+    
 
     fclose(f);
 
@@ -54,6 +85,8 @@ int main(int argc, char** argv) {
     free(scheduler);
     free(memStrat);
     free(quantum);
+
+    heapFree(heap);
 
     return 0;
 

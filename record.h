@@ -15,4 +15,8 @@ process_t* processRead(FILE* f);
 
 void processPrint(process_t* proc);
 
+void processRunPrint(process_t* proc, int time, int remainingTime);
+
+void processFinPrint(process_t* proc, int time, int procRemaining);
+
 #endif
