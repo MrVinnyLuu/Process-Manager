@@ -1,3 +1,4 @@
+// Inspiration taken from https://www.sanfoundry.com/c-program-implement-heap/
 
 #include <stddef.h>
 #include <stdio.h>
@@ -18,20 +19,19 @@ heap_t* heapInit() {
     heap->n = 0;
     heap->size = INIT_SIZE;
 
-    // heap->heap[0] = -1;
-
     return heap;
 
 }
 
 void heapPush(heap_t* heap, process_t* proc) {
+
     heap->n++;
 
     heap->heap[heap->n] = proc;
 
     int i = heap->n;
 
-    while (i/2 != 0 && heap->heap[i/2]->serviceTime > proc->serviceTime) {
+    while (i/2 != 0 && processCompare(heap->heap[i/2], proc)) {
         heap->heap[i] = heap->heap[i/2];
         i /= 2;
     }
@@ -47,20 +47,22 @@ void heapPush(heap_t* heap, process_t* proc) {
 }
 
 process_t* heapPop(heap_t* heap) {
-    
+
     process_t* min = heap->heap[1];
+    
     process_t* last = heap->heap[heap->n--];
+    
     int cur, child;
 
     for (cur = 1; cur*2 <= heap->n; cur = child) {
 
         child = cur*2;
 
-        if (child != heap->n && heap->heap[child+1]->serviceTime < heap->heap[child]->serviceTime) {
+        if (child != heap->n && processCompare(heap->heap[child], heap->heap[child+1])) {
             child++;
         }
 
-        if (last->serviceTime > heap->heap[child]->serviceTime) {
+        if (processCompare(last, heap->heap[child])) {
             heap->heap[cur] = heap->heap[child];
         } else {
             break;
@@ -69,7 +71,7 @@ process_t* heapPop(heap_t* heap) {
     }
 
     heap->heap[cur] = last;
-    
+
     return min;
 
 }
@@ -87,4 +89,10 @@ void heapShrink(heap_t* heap) {
 void heapFree(heap_t* heap) {
     free(heap->heap);
     free(heap);
+}
+
+void heapPrint(heap_t* heap) {
+    for (int i = 1; i <= heap->n; i++) {
+        processPrint(heap->heap[i]);
+    }
 }

@@ -8,12 +8,14 @@
 
 // ./allocate -f cases/task1/simple.txt -s RR -m best-fit -q 3
 
+void SJF(FILE* f, int q);
+
 int main(int argc, char** argv) {
     
     char* filepath;
     char* scheduler;
     char* memStrat;
-    char* quantum;
+    int quantum;
 
     for (int i = 1; i < argc; i++) {
         if (strcmp(argv[i], "-f") == 0) {
@@ -26,68 +28,75 @@ int main(int argc, char** argv) {
             memStrat = strdup(argv[++i]);
             assert(memStrat);
         } else if (strcmp(argv[i], "-q") == 0) {
-            quantum = strdup(argv[++i]);
-            assert(quantum);
+            quantum = atoi(argv[++i]);
         }
     }
 
-    // printf("file: %s\nscheduler: %s\nmemstrat: %s\nquantum: %s\n", filepath, scheduler, memStrat, quantum);
+    // printf("file: %s\nscheduler: %s\nmemstrat: %s\nquantum: %d\n", filepath, scheduler, memStrat, quantum);
 
     FILE* f = fopen(filepath, "r");
     assert(f);
 
-    heap_t* heap = heapInit();
-
-    process_t* proc = processRead(f);
-    process_t* curProc;
-
-    int curTime = proc->arrivalTime;
-
-    heapPush(heap, proc);
-
-    while ((proc = processRead(f))) {
-
-        if (proc->arrivalTime > curTime) {
-            
-            if (heap->n != 0) {
-                curProc = heapPop(heap);
-                processRunPrint(curProc, curTime, curProc->serviceTime);
-                curTime += curProc->serviceTime;
-            } else {
-                curTime = proc->arrivalTime;
-            }
-        }
-
-        processFinPrint(curProc,curTime,heap->n);
-        heapPush(heap, proc);
-    }
-
-    while (heap->n != 0) {
-        process_t* curProc = heapPop(heap);
-        processRunPrint(curProc, curTime, curProc->serviceTime);
-        curTime += curProc->serviceTime;
-        processFinPrint(curProc,curTime,heap->n);
-    }
-
-    // for (int i = 1; i <= heap->n; i++) {
-    //     processPrint(heap->heap[i]);
-    // }
-
-    // while (heap->n > 0) {
-    //     processPrint(heapPop(heap));
-    // }
-
-    
+    SJF(f, quantum);   
 
     fclose(f);
 
     free(filepath);
     free(scheduler);
     free(memStrat);
-    free(quantum);
-
-    heapFree(heap);
 
     return 0;
+
+}
+
+void SJF(FILE* f, int q) {
+
+    heap_t* heap = heapInit();
+
+    // Set the time to the start quantum of the first process
+    process_t* nextProc = processRead(f);
+    heapPush(heap, nextProc);
+    int curTime = (nextProc->arrivalTime%q == 0) ?
+                   nextProc->arrivalTime : (nextProc->arrivalTime/q+1)*q;
+
+    // Add to the ready queue processes that arrive at the same time as the first
+    nextProc = processRead(f);
+    while (nextProc && nextProc->arrivalTime == curTime) {
+        heapPush(heap, nextProc);
+        nextProc = processRead(f);
+    }
+
+    while (heap->n != 0) {
+
+        // Get the shortest process
+        process_t* execProc = heapPop(heap);
+        
+        // Start the shortest process
+        processRunPrint(execProc, curTime, execProc->serviceTime);
+
+        // Calculate the finish time 
+        int finTime = curTime + execProc->serviceTime;
+        curTime = (finTime%q == 0) ? finTime : (finTime/q+1)*q;
+
+        // Add all the jobs that arrive strictly before the finish time
+        if (!nextProc) nextProc = processRead(f);
+        while (nextProc && nextProc->arrivalTime <= curTime-q) {
+            heapPush(heap, nextProc);
+            nextProc = processRead(f);
+        }
+
+        // Complete the running process
+        processFinPrint(execProc,curTime,heap->n);
+
+        // Add all the jobs that arrive at the same time as the finish time
+        if (!nextProc) nextProc = processRead(f);
+        while (nextProc && nextProc->arrivalTime <= curTime) {
+            heapPush(heap, nextProc);
+            nextProc = processRead(f);
+        }
+    
+    }
+
+    heapFree(heap);
 
 }

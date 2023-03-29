@@ -20,4 +20,6 @@ void heapShrink(heap_t* heap);
 
 void heapFree(heap_t* heap);
 
+void heapPrint(heap_t* heap);
+
 #endif
