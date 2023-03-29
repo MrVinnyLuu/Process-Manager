@@ -6,9 +6,6 @@
 #include "heap.h"
 #include <math.h>
 
-
-// ./allocate -f cases/task1/simple.txt -s RR -m best-fit -q 3
-
 typedef struct stats {
     int turnaround;
     double maxOverhead;

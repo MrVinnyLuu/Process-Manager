@@ -7,7 +7,7 @@ CFLAGS = -Wall -g
 LIB = -lm
 
 # define sets of header source files and object files
-SRC = main.c record.c heap.c
+SRC = src/main.c src/record.c src/heap.c
 
 # OBJ is the same as SRC, just replace .c with .o
 OBJ = $(SRC:.c=.o)
@@ -15,7 +15,6 @@ OBJ = $(SRC:.c=.o)
 # define the executable name(s)
 EXE = allocate
 
-# the first target:
 $(EXE): $(OBJ)
 	$(CC) $(CFLAGS) -o $(EXE) $(OBJ) $(LIB)
 
