@@ -4,7 +4,7 @@
 CC = gcc
 CFLAGS = -Wall -g
 # define libraries to be linked
-LIB =
+LIB = -lm
 
 # define sets of header source files and object files
 SRC = main.c record.c heap.c

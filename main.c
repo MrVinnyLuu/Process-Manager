@@ -4,11 +4,19 @@
 #include <assert.h>
 #include "record.h"
 #include "heap.h"
+#include <math.h>
 
 
 // ./allocate -f cases/task1/simple.txt -s RR -m best-fit -q 3
 
-void SJF(FILE* f, int q);
+typedef struct stats {
+    int turnaround;
+    double maxOverhead;
+    double avgOverhead;
+    int makespan;
+} stats_t;
+
+stats_t SJF(FILE* f, int q);
 
 int main(int argc, char** argv) {
     
@@ -37,7 +45,12 @@ int main(int argc, char** argv) {
     FILE* f = fopen(filepath, "r");
     assert(f);
 
-    SJF(f, quantum);   
+    stats_t stats = SJF(f, quantum);
+    fprintf(stdout,"Turnaround time %d\n"
+                    "Time overhead %.2lf %.2lf\n"
+                    "Makespan %d\n",
+                    stats.turnaround, stats.maxOverhead,
+                    stats.avgOverhead, stats.makespan);
 
     fclose(f);
 
@@ -49,9 +62,12 @@ int main(int argc, char** argv) {
 
 }
 
-void SJF(FILE* f, int q) {
+stats_t SJF(FILE* f, int q) {
 
     heap_t* heap = heapInit();
+    stats_t stats = {};
+    int numProcesses = 0, totTurnaround = 0;
+    double totOverhead = 0;
 
     // Set the time to the start quantum of the first process
     process_t* nextProc = processRead(f);
@@ -73,10 +89,11 @@ void SJF(FILE* f, int q) {
         
         // Start the shortest process
         processRunPrint(execProc, curTime, execProc->serviceTime);
+        numProcesses++;
 
         // Calculate the finish time 
         int finTime = curTime + execProc->serviceTime;
-        curTime = (finTime%q == 0) ? finTime : (finTime/q+1)*q;
+        curTime = (finTime%q == 0) ? finTime : (finTime/q + 1) * q;
 
         // Add all the jobs that arrive strictly before the finish time
         if (!nextProc) nextProc = processRead(f);
@@ -85,8 +102,13 @@ void SJF(FILE* f, int q) {
             nextProc = processRead(f);
         }
 
-        // Complete the running process
+        // Complete the running process and update stats
         processFinPrint(execProc,curTime,heap->n);
+        int curTurnaround = curTime - execProc->arrivalTime;
+        totTurnaround += curTurnaround;
+        double curOverhead = (double)curTurnaround/execProc->serviceTime;
+        totOverhead += curOverhead;
+        stats.maxOverhead = fmax(stats.maxOverhead, curOverhead);
         processFree(execProc);
 
         // Add all the jobs that arrive at the same time as the finish time
@@ -99,5 +121,11 @@ void SJF(FILE* f, int q) {
     }
 
     heapFree(heap);
+
+    stats.turnaround = ceil((double)totTurnaround/numProcesses);
+    stats.avgOverhead = totOverhead/numProcesses;
+    stats.makespan = curTime;
+
+    return stats;
 
 }
