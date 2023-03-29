@@ -60,8 +60,7 @@ process_t* processRead(FILE* f) {
                &proc->serviceTime,
                &proc->memoryRequirement) != 4) {
 
-        free(proc->name);
-        free(proc);
+        processFree(proc);
         return NULL;
 
     } else {
@@ -69,7 +68,7 @@ process_t* processRead(FILE* f) {
         // printf("%d, %s, %d, %d\n", proc->arrivalTime, proc->name, proc->serviceTime, proc->memoryRequirement);
 
         return proc;
-        
+
     }
 
 }
@@ -96,4 +95,9 @@ void processRunPrint(process_t* proc, int time, int remainingTime) {
 
 void processFinPrint(process_t* proc, int time, int procRemaining) {
     fprintf(stdout,"%d,FINISHED,process_name=%s,proc_remaining=%d\n",time,proc->name,procRemaining);
+}
+
+void processFree(process_t* proc) {
+    free(proc->name);
+    free(proc);
 }

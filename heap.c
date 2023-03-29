@@ -27,22 +27,22 @@ void heapPush(heap_t* heap, process_t* proc) {
 
     heap->n++;
 
-    heap->heap[heap->n] = proc;
-
-    int i = heap->n;
-
-    while (i/2 != 0 && processCompare(heap->heap[i/2], proc)) {
-        heap->heap[i] = heap->heap[i/2];
-        i /= 2;
-    }
-
-    heap->heap[i] = proc;
-
     if (heap->n == heap->size) {
         heap->size *= 2;
         heap->heap = realloc(heap->heap, heap->size * sizeof(*(heap->heap)));
         assert(heap->heap);
     }
+
+    heap->heap[heap->n] = proc;
+
+    int i = heap->n;
+
+    while (i/2 > 0 && processCompare(heap->heap[i/2], proc)) {
+        heap->heap[i] = heap->heap[i/2];
+        i /= 2;
+    }
+
+    heap->heap[i] = proc;
 
 }
 
@@ -71,7 +71,7 @@ process_t* heapPop(heap_t* heap) {
     }
 
     heap->heap[cur] = last;
-
+    
     return min;
 
 }

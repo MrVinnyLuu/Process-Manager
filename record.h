@@ -21,4 +21,6 @@ void processRunPrint(process_t* proc, int time, int remainingTime);
 
 void processFinPrint(process_t* proc, int time, int procRemaining);
 
+void processFree(process_t* proc);
+
 #endif

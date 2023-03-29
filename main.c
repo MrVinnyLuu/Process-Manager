@@ -87,6 +87,7 @@ void SJF(FILE* f, int q) {
 
         // Complete the running process
         processFinPrint(execProc,curTime,heap->n);
+        processFree(execProc);
 
         // Add all the jobs that arrive at the same time as the finish time
         if (!nextProc) nextProc = processRead(f);
