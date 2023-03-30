@@ -2,9 +2,10 @@
 #include <string.h>
 #include <stdlib.h>
 #include <assert.h>
+#include <math.h>
 #include "record.h"
 #include "heap.h"
-#include <math.h>
+#include "queue.h"
 
 typedef struct stats {
     int turnaround;
@@ -14,6 +15,7 @@ typedef struct stats {
 } stats_t;
 
 stats_t SJF(FILE* f, int q);
+stats_t RR(FILE* f, int q);
 
 int main(int argc, char** argv) {
     
@@ -42,7 +44,27 @@ int main(int argc, char** argv) {
     FILE* f = fopen(filepath, "r");
     assert(f);
 
-    stats_t stats = SJF(f, quantum);
+    
+
+    // process_t* proc;
+    // linkedList_t* queue = queueInit();
+    // while ((proc = processRead(f))) {
+    //     queueAdd(queue,proc);
+    // }
+    // while (queue->n != 0) {
+    //     processPrint(queuePop(queue));
+    // }
+
+    stats_t stats;
+
+    if (strcmp(scheduler, "SJF") == 0) {
+        stats = SJF(f, quantum);
+    } else if (strcmp(scheduler, "RR") == 0) {
+        stats = RR(f, quantum);
+    } else {
+        return 1;
+    }
+    
     fprintf(stdout,"Turnaround time %d\n"
                     "Time overhead %.2lf %.2lf\n"
                     "Makespan %d\n",
@@ -56,6 +78,68 @@ int main(int argc, char** argv) {
     free(memStrat);
 
     return 0;
+
+}
+
+stats_t RR(FILE* f, int q) {
+
+    linkedList_t* queue = queueInit();
+    stats_t stats = {};
+    int numProcesses = 0, totTurnaround = 0;
+    double totOverhead = 0;
+
+    // Set the time to the start quantum of the first process
+    process_t* nextProc = processRead(f);
+    queueAdd(queue, nextProc);
+    int curTime = (nextProc->arrivalTime%q == 0) ?
+                   nextProc->arrivalTime : (nextProc->arrivalTime/q+1)*q;
+
+    // Add to the ready queue processes that arrive at the same time as the first
+    nextProc = processRead(f);
+    while (nextProc && nextProc->arrivalTime == curTime) {
+        queueAdd(queue, nextProc);
+        nextProc = processRead(f);
+    }
+
+    while (queue->n > 0) {
+
+        // Get the next process
+        process_t* execProc = queuePop(queue);
+        if (execProc->serviceTime == execProc->remainTime) numProcesses++;
+
+        // Run the process
+        processRunPrint(execProc, curTime);
+        execProc->remainTime -= q;
+        curTime += q;
+
+        if (execProc->remainTime <= 0) {
+            processFinPrint(execProc,curTime,queue->n);
+            int curTurnaround = curTime - execProc->arrivalTime;
+            totTurnaround += curTurnaround;
+            double curOverhead = (double)curTurnaround/execProc->serviceTime;
+            totOverhead += curOverhead;
+            stats.maxOverhead = fmax(stats.maxOverhead, curOverhead);
+            processFree(execProc);
+        } else {
+            queueAdd(queue, execProc);
+        }
+
+        if (!nextProc) nextProc = processRead(f);
+        while (nextProc && nextProc->arrivalTime <= curTime) {
+            queueAdd(queue, nextProc);
+            nextProc = processRead(f);
+        }
+
+    }
+
+    queueFree(queue);
+
+    stats.turnaround = ceil((double)totTurnaround/numProcesses);
+    stats.avgOverhead = totOverhead/numProcesses;
+    stats.makespan = curTime;
+
+    return stats;
+
 
 }
 
@@ -84,8 +168,8 @@ stats_t SJF(FILE* f, int q) {
         // Get the shortest process
         process_t* execProc = heapPop(heap);
         
-        // Start the shortest process
-        processRunPrint(execProc, curTime, execProc->serviceTime);
+        // Start the process
+        processRunPrint(execProc, curTime);
         numProcesses++;
 
         // Calculate the finish time 

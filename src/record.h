@@ -8,6 +8,7 @@ typedef struct process {
     int arrivalTime;
     char* name;
     int serviceTime;
+    int remainTime;
     int memoryRequirement;
 } process_t;
 
@@ -17,7 +18,7 @@ int processCompare(process_t* proc1, process_t* proc2);
 
 void processPrint(process_t* proc);
 
-void processRunPrint(process_t* proc, int time, int remainingTime);
+void processRunPrint(process_t* proc, int time);
 
 void processFinPrint(process_t* proc, int time, int procRemaining);
 

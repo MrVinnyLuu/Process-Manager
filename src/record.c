@@ -65,8 +65,7 @@ process_t* processRead(FILE* f) {
 
     } else {
 
-        // printf("%d, %s, %d, %d\n", proc->arrivalTime, proc->name, proc->serviceTime, proc->memoryRequirement);
-
+        proc->remainTime = proc->serviceTime;
         return proc;
 
     }
@@ -89,8 +88,8 @@ void processPrint(process_t* proc) {
     fprintf(stdout, "                %d, %s, %d, %d\n", proc->arrivalTime, proc->name, proc->serviceTime, proc->memoryRequirement);
 }
 
-void processRunPrint(process_t* proc, int time, int remainingTime) {
-    fprintf(stdout,"%d,RUNNING,process_name=%s,remaining_time=%d\n",time,proc->name,remainingTime);
+void processRunPrint(process_t* proc, int time) {
+    fprintf(stdout,"%d,RUNNING,process_name=%s,remaining_time=%d\n",time,proc->name,proc->remainTime);
 }
 
 void processFinPrint(process_t* proc, int time, int procRemaining) {

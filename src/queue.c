@@ -1,20 +1,25 @@
 
-#include "record.h"
+#include <stdlib.h>
+#include <assert.h>
+#include "queue.h"
 
-typedef struct listNode {
-    process_t* proc;
-    listNode_t* next;
-} listNode_t;
+linkedList_t* queueInit() {
 
-typedef struct linkedList {
-    listNode_t* head;
-    listNode_t* tail;
-    int size;
-} linkedList_t;
+    linkedList_t* queue = malloc(sizeof(*queue));
+    assert(queue);
+
+    queue->n = 0;
+
+    return queue;
+
+}
 
 void queueAdd(linkedList_t* queue, process_t* proc) {
-    queue->size++;
-    listNode_t* newNode = {proc, NULL};
+
+    queue->n++;
+    listNode_t* newNode = malloc(sizeof(*newNode));
+    assert(newNode);
+    newNode->proc = proc;
     if (queue->tail) {
         queue->tail->next = newNode;
         queue->tail = newNode;
@@ -22,12 +27,18 @@ void queueAdd(linkedList_t* queue, process_t* proc) {
         queue->head = newNode;
         queue->tail = newNode;
     }
+
 }
 
 process_t* queuePop(linkedList_t* queue) {
-    queue->size--;
+    queue->n--;
+    if (queue->n == 0) queue->tail = NULL;
     listNode_t* retNode = queue->head;
     queue->head = queue->head->next;
-    return retNode;
+    return retNode->proc;
+}
+
+void queueFree(linkedList_t* queue) {
+    free(queue);
 }
 
