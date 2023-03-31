@@ -103,7 +103,7 @@ stats_t RR(FILE* f, int q) {
     process_t* prevProc = NULL;
 
     while (queue->n > 0) {
-
+        
         // Get the next process
         prevProc = execProc;
         execProc = queuePop(queue);
@@ -115,12 +115,12 @@ stats_t RR(FILE* f, int q) {
         curTime += q;
 
         // Add all the jobs that have arrived
-        if (!nextProc) nextProc = processRead(f);
         while (nextProc && nextProc->arrivalTime <= curTime) {
             queueAdd(queue, nextProc);
             nextProc = processRead(f);
         }
 
+        // Check to see if the process finished in this quantum
         if (execProc->remainTime <= 0) {
             processFinPrint(execProc,curTime,queue->n);
             int curTurnaround = curTime - execProc->arrivalTime;
@@ -131,6 +131,14 @@ stats_t RR(FILE* f, int q) {
             processFree(execProc);
         } else {
             queueAdd(queue, execProc);
+        }
+
+        // Skip "gaps" in time
+        if (queue->n == 0 && nextProc) {
+            queueAdd(queue, nextProc);
+            int startTime = curTime + nextProc->arrivalTime;
+            curTime = (startTime%q == 0) ? startTime : (startTime/q+1)*q;
+            nextProc = processRead(f);
         }
 
     }
@@ -167,9 +175,11 @@ stats_t SJF(FILE* f, int q) {
 
     while (heap->n != 0) {
 
+        // heapPrint(heap);
+
         // Get the shortest process
         process_t* execProc = heapPop(heap);
-        
+
         // Start the process
         processRunPrint(execProc, curTime);
         numProcesses++;
@@ -179,7 +189,6 @@ stats_t SJF(FILE* f, int q) {
         curTime = (finTime%q == 0) ? finTime : (finTime/q + 1) * q;
 
         // Add all the jobs that arrive strictly before the finish time
-        if (!nextProc) nextProc = processRead(f);
         while (nextProc && nextProc->arrivalTime <= curTime-q) {
             heapPush(heap, nextProc);
             nextProc = processRead(f);
@@ -195,18 +204,19 @@ stats_t SJF(FILE* f, int q) {
         processFree(execProc);
 
         // Add all the jobs that arrive at the same time as the finish time
-        if (!nextProc) nextProc = processRead(f);
         while (nextProc && nextProc->arrivalTime <= curTime) {
             heapPush(heap, nextProc);
             nextProc = processRead(f);
         }
 
+        // Skip "gaps" in time
         if (heap->n == 0 && nextProc) {
             heapPush(heap, nextProc);
             int startTime = curTime + nextProc->arrivalTime;
             curTime = (startTime%q == 0) ? startTime : (startTime/q+1)*q;
+            nextProc = processRead(f);
         }
-    
+
     }
 
     heapFree(heap);
