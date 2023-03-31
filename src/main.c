@@ -68,8 +68,8 @@ int main(int argc, char** argv) {
     fprintf(stdout,"Turnaround time %d\n"
                     "Time overhead %.2lf %.2lf\n"
                     "Makespan %d\n",
-                    stats.turnaround, stats.maxOverhead,
-                    stats.avgOverhead, stats.makespan);
+                    stats.turnaround, roundf(stats.maxOverhead*100)/100,
+                    roundf(stats.avgOverhead*100)/100, stats.makespan);
 
     fclose(f);
 
@@ -101,16 +101,26 @@ stats_t RR(FILE* f, int q) {
         nextProc = processRead(f);
     }
 
+    process_t* execProc;
+    process_t* prevProc;
+
     while (queue->n > 0) {
 
         // Get the next process
-        process_t* execProc = queuePop(queue);
+        prevProc = execProc;
+        execProc = queuePop(queue);
         if (execProc->serviceTime == execProc->remainTime) numProcesses++;
 
         // Run the process
-        processRunPrint(execProc, curTime);
+        if (prevProc != execProc) processRunPrint(execProc, curTime);
         execProc->remainTime -= q;
         curTime += q;
+
+        if (!nextProc) nextProc = processRead(f);
+        while (nextProc && nextProc->arrivalTime <= curTime) {
+            queueAdd(queue, nextProc);
+            nextProc = processRead(f);
+        }
 
         if (execProc->remainTime <= 0) {
             processFinPrint(execProc,curTime,queue->n);
@@ -122,12 +132,6 @@ stats_t RR(FILE* f, int q) {
             processFree(execProc);
         } else {
             queueAdd(queue, execProc);
-        }
-
-        if (!nextProc) nextProc = processRead(f);
-        while (nextProc && nextProc->arrivalTime <= curTime) {
-            queueAdd(queue, nextProc);
-            nextProc = processRead(f);
         }
 
     }
