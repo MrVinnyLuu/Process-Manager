@@ -101,8 +101,8 @@ stats_t RR(FILE* f, int q) {
         nextProc = processRead(f);
     }
 
-    process_t* execProc;
-    process_t* prevProc;
+    process_t* execProc = NULL;
+    process_t* prevProc = NULL;
 
     while (queue->n > 0) {
 
