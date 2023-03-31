@@ -40,11 +40,13 @@ process_t* queuePop(linkedList_t* queue) {
 
     listNode_t* prevHead = queue->head;
     process_t* ret = prevHead->proc;
-    free(prevHead);
 
     queue->head = queue->head->next;
-    return ret;
     
+    free(prevHead);
+
+    return ret;
+
 }
 
 void queueFree(linkedList_t* queue) {
