@@ -44,8 +44,6 @@ int main(int argc, char** argv) {
     FILE* f = fopen(filepath, "r");
     assert(f);
 
-    
-
     // process_t* proc;
     // linkedList_t* queue = queueInit();
     // while ((proc = processRead(f))) {
@@ -116,6 +114,7 @@ stats_t RR(FILE* f, int q) {
         execProc->remainTime -= q;
         curTime += q;
 
+        // Add all the jobs that have arrived
         if (!nextProc) nextProc = processRead(f);
         while (nextProc && nextProc->arrivalTime <= curTime) {
             queueAdd(queue, nextProc);
@@ -143,7 +142,6 @@ stats_t RR(FILE* f, int q) {
     stats.makespan = curTime;
 
     return stats;
-
 
 }
 
@@ -201,6 +199,12 @@ stats_t SJF(FILE* f, int q) {
         while (nextProc && nextProc->arrivalTime <= curTime) {
             heapPush(heap, nextProc);
             nextProc = processRead(f);
+        }
+
+        if (heap->n == 0 && nextProc) {
+            heapPush(heap, nextProc);
+            int startTime = curTime + nextProc->arrivalTime;
+            curTime = (startTime%q == 0) ? startTime : (startTime/q+1)*q;
         }
     
     }
