@@ -8,6 +8,9 @@ linkedList_t* queueInit() {
     linkedList_t* queue = malloc(sizeof(*queue));
     assert(queue);
 
+    queue->head = NULL;
+    queue->tail = NULL;
+
     queue->n = 0;
 
     return queue;
@@ -31,11 +34,17 @@ void queueAdd(linkedList_t* queue, process_t* proc) {
 }
 
 process_t* queuePop(linkedList_t* queue) {
+
     queue->n--;
     if (queue->n == 0) queue->tail = NULL;
-    listNode_t* retNode = queue->head;
+
+    listNode_t* prevHead = queue->head;
+    process_t* ret = prevHead->proc;
+    free(prevHead);
+
     queue->head = queue->head->next;
-    return retNode->proc;
+    return ret;
+    
 }
 
 void queueFree(linkedList_t* queue) {

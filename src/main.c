@@ -112,7 +112,7 @@ stats_t RR(FILE* f, int q) {
         if (execProc->serviceTime == execProc->remainTime) numProcesses++;
 
         // Run the process
-        if (prevProc != execProc) processRunPrint(execProc, curTime);
+        // if (prevProc != execProc) processRunPrint(execProc, curTime);
         execProc->remainTime -= q;
         curTime += q;
 
@@ -123,7 +123,7 @@ stats_t RR(FILE* f, int q) {
         }
 
         if (execProc->remainTime <= 0) {
-            processFinPrint(execProc,curTime,queue->n);
+            // processFinPrint(execProc,curTime,queue->n);
             int curTurnaround = curTime - execProc->arrivalTime;
             totTurnaround += curTurnaround;
             double curOverhead = (double)curTurnaround/execProc->serviceTime;
@@ -135,7 +135,7 @@ stats_t RR(FILE* f, int q) {
         }
 
     }
-
+    
     queueFree(queue);
 
     stats.turnaround = ceil((double)totTurnaround/numProcesses);
