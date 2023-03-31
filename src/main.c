@@ -5,7 +5,9 @@
 #include <math.h>
 #include "record.h"
 #include "heap.h"
-#include "queue.h"
+#include "llist.h"
+
+#define AVAIL_MEMORY 2048
 
 typedef struct stats {
     int turnaround;
@@ -14,8 +16,8 @@ typedef struct stats {
     int makespan;
 } stats_t;
 
-stats_t SJF(FILE* f, int q);
-stats_t RR(FILE* f, int q);
+stats_t SJF(FILE* f, int q, char* memStrat);
+stats_t RR(FILE* f, int q, char* memStrat);
 
 int main(int argc, char** argv) {
     
@@ -45,20 +47,20 @@ int main(int argc, char** argv) {
     assert(f);
 
     // process_t* proc;
-    // linkedList_t* queue = queueInit();
+    // linkedList_t* llist = llistInit();
     // while ((proc = processRead(f))) {
-    //     queueAdd(queue,proc);
+    //     llistAdd(llist,proc);
     // }
-    // while (queue->n != 0) {
-    //     processPrint(queuePop(queue));
+    // while (llist->n != 0) {
+    //     processPrint(llistPop(llist));
     // }
 
     stats_t stats;
 
     if (strcmp(scheduler, "SJF") == 0) {
-        stats = SJF(f, quantum);
+        stats = SJF(f, quantum, memStrat);
     } else if (strcmp(scheduler, "RR") == 0) {
-        stats = RR(f, quantum);
+        stats = RR(f, quantum, memStrat);
     } else {
         return 1;
     }
@@ -79,23 +81,23 @@ int main(int argc, char** argv) {
 
 }
 
-stats_t RR(FILE* f, int q) {
+stats_t RR(FILE* f, int q, char* memStrat) {
 
-    linkedList_t* queue = queueInit();
+    linkedList_t* queue = llistInit();
     stats_t stats = {};
     int numProcesses = 0, totTurnaround = 0;
     double totOverhead = 0;
 
     // Set the time to the start quantum of the first process
     process_t* nextProc = processRead(f);
-    queueAdd(queue, nextProc);
+    llistAdd(queue, nextProc);
     int curTime = (nextProc->arrivalTime%q == 0) ?
                    nextProc->arrivalTime : (nextProc->arrivalTime/q+1)*q;
 
     // Add to the ready queue processes that arrive at the same time as the first
     nextProc = processRead(f);
     while (nextProc && nextProc->arrivalTime == curTime) {
-        queueAdd(queue, nextProc);
+        llistAdd(queue, nextProc);
         nextProc = processRead(f);
     }
 
@@ -106,7 +108,7 @@ stats_t RR(FILE* f, int q) {
         
         // Get the next process
         prevProc = execProc;
-        execProc = queuePop(queue);
+        execProc = llistPop(queue);
         if (execProc->serviceTime == execProc->remainTime) numProcesses++;
 
         // Run the process
@@ -116,13 +118,13 @@ stats_t RR(FILE* f, int q) {
 
         // Add all the jobs that have arrived
         while (nextProc && nextProc->arrivalTime <= curTime) {
-            queueAdd(queue, nextProc);
+            llistAdd(queue, nextProc);
             nextProc = processRead(f);
         }
 
         // Check to see if the process finished in this quantum
         if (execProc->remainTime <= 0) {
-            processFinPrint(execProc,curTime,queue->n);
+            processFinPrint(execProc, curTime, queue->n);
             int curTurnaround = curTime - execProc->arrivalTime;
             totTurnaround += curTurnaround;
             double curOverhead = (double)curTurnaround/execProc->serviceTime;
@@ -130,12 +132,12 @@ stats_t RR(FILE* f, int q) {
             stats.maxOverhead = fmax(stats.maxOverhead, curOverhead);
             processFree(execProc);
         } else {
-            queueAdd(queue, execProc);
+            llistAdd(queue, execProc);
         }
 
         // Skip "gaps" in time
         if (queue->n == 0 && nextProc) {
-            queueAdd(queue, nextProc);
+            llistAdd(queue, nextProc);
             int startTime = curTime + nextProc->arrivalTime;
             curTime = (startTime%q == 0) ? startTime : (startTime/q+1)*q;
             nextProc = processRead(f);
@@ -143,7 +145,7 @@ stats_t RR(FILE* f, int q) {
 
     }
 
-    queueFree(queue);
+    llistFree(queue);
 
     stats.turnaround = ceil((double)totTurnaround/numProcesses);
     stats.avgOverhead = totOverhead/numProcesses;
@@ -153,7 +155,7 @@ stats_t RR(FILE* f, int q) {
 
 }
 
-stats_t SJF(FILE* f, int q) {
+stats_t SJF(FILE* f, int q, char* memStrat) {
 
     heap_t* heap = heapInit();
     stats_t stats = {};
@@ -162,14 +164,14 @@ stats_t SJF(FILE* f, int q) {
 
     // Set the time to the start quantum of the first process
     process_t* nextProc = processRead(f);
-    heapPush(heap, nextProc);
+    heapPush(heap, nextProc, processCompare);
     int curTime = (nextProc->arrivalTime%q == 0) ?
                    nextProc->arrivalTime : (nextProc->arrivalTime/q+1)*q;
 
     // Add to the ready queue processes that arrive at the same time as the first
     nextProc = processRead(f);
     while (nextProc && nextProc->arrivalTime == curTime) {
-        heapPush(heap, nextProc);
+        heapPush(heap, nextProc, processCompare);
         nextProc = processRead(f);
     }
 
@@ -178,7 +180,7 @@ stats_t SJF(FILE* f, int q) {
         // heapPrint(heap);
 
         // Get the shortest process
-        process_t* execProc = heapPop(heap);
+        process_t* execProc = heapPop(heap, processCompare);
 
         // Start the process
         processRunPrint(execProc, curTime);
@@ -190,7 +192,7 @@ stats_t SJF(FILE* f, int q) {
 
         // Add all the jobs that arrive strictly before the finish time
         while (nextProc && nextProc->arrivalTime <= curTime-q) {
-            heapPush(heap, nextProc);
+            heapPush(heap, nextProc, processCompare);
             nextProc = processRead(f);
         }
 
@@ -205,13 +207,13 @@ stats_t SJF(FILE* f, int q) {
 
         // Add all the jobs that arrive at the same time as the finish time
         while (nextProc && nextProc->arrivalTime <= curTime) {
-            heapPush(heap, nextProc);
+            heapPush(heap, nextProc, processCompare);
             nextProc = processRead(f);
         }
 
         // Skip "gaps" in time
         if (heap->n == 0 && nextProc) {
-            heapPush(heap, nextProc);
+            heapPush(heap, nextProc, processCompare);
             int startTime = curTime + nextProc->arrivalTime;
             curTime = (startTime%q == 0) ? startTime : (startTime/q+1)*q;
             nextProc = processRead(f);

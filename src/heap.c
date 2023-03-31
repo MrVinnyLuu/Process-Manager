@@ -23,7 +23,7 @@ heap_t* heapInit() {
 
 }
 
-void heapPush(heap_t* heap, process_t* proc) {
+void heapPush(heap_t* heap, void* proc, int (compare)(void*,void*)) {
 
     heap->n++;
 
@@ -37,7 +37,7 @@ void heapPush(heap_t* heap, process_t* proc) {
 
     int i = heap->n;
 
-    while (i/2 > 0 && processCompare(heap->heap[i/2], proc)) {
+    while (i/2 > 0 && compare(heap->heap[i/2], proc)) {
         heap->heap[i] = heap->heap[i/2];
         i /= 2;
     }
@@ -46,11 +46,11 @@ void heapPush(heap_t* heap, process_t* proc) {
 
 }
 
-process_t* heapPop(heap_t* heap) {
+void* heapPop(heap_t* heap, int (compare)(void*,void*)) {
 
-    process_t* min = heap->heap[1];
+    void* min = heap->heap[1];
     
-    process_t* last = heap->heap[heap->n--];
+    void* last = heap->heap[heap->n--];
     
     int cur, child;
 
@@ -58,11 +58,11 @@ process_t* heapPop(heap_t* heap) {
 
         child = cur*2;
 
-        if (child != heap->n && processCompare(heap->heap[child], heap->heap[child+1])) {
+        if (child != heap->n && compare(heap->heap[child], heap->heap[child+1])) {
             child++;
         }
 
-        if (processCompare(last, heap->heap[child])) {
+        if (compare(last, heap->heap[child])) {
             heap->heap[cur] = heap->heap[child];
         } else {
             break;
@@ -91,8 +91,8 @@ void heapFree(heap_t* heap) {
     free(heap);
 }
 
-void heapPrint(heap_t* heap) {
-    for (int i = 1; i <= heap->n; i++) {
-        processPrint(heap->heap[i]);
-    }
-}
+// void heapPrint(heap_t* heap) {
+//     for (int i = 1; i <= heap->n; i++) {
+//         processPrint(heap->heap[i]);
+//     }
+// }

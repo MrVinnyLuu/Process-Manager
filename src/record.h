@@ -14,7 +14,7 @@ typedef struct process {
 
 process_t* processRead(FILE* f);
 
-int processCompare(process_t* proc1, process_t* proc2);
+int processCompare(void* proc1, void* proc2);
 
 void processPrint(process_t* proc);
 
