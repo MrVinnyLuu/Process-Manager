@@ -15,5 +15,7 @@ void memoryInit(linkedList_t* memory, int maxMemory);
 
 int memoryAlloc(linkedList_t* memory, int size);
 
+void memoryFree(linkedList_t* memory, int start);
+
 #endif
 

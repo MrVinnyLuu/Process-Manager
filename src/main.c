@@ -216,11 +216,11 @@ stats_t SJF(FILE* f, int q, char* memStrat) {
             }
             heapPush(heap, nextProc, processCompare);
             nextProc = processRead(f);
-            
         }
 
         // Complete the running process and update stats
-        processFinPrint(execProc,curTime,heap->n);
+        processFinPrint(execProc, curTime,heap->n);
+        if (memory) memoryFree(memory, 0);
         int curTurnaround = curTime - execProc->arrivalTime;
         totTurnaround += curTurnaround;
         double curOverhead = (double)curTurnaround/execProc->serviceTime;

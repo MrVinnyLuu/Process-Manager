@@ -46,3 +46,47 @@ int memoryAlloc(linkedList_t* memory, int size) {
     return ((memBlock_t*)cur->item)->start;
 
 }
+
+void memoryFree(linkedList_t* memory, int start) {
+    
+    listNode_t* cur = memory->head;
+
+    if (((memBlock_t*)cur->item)->start == start) {
+        ((memBlock_t*)cur->item)->type = 'H';
+        if (cur->next && ((memBlock_t*)cur->next->item)->type == 'H') {
+            ((memBlock_t*)cur->item)->length += ((memBlock_t*)cur->next->item)->length;
+            listNode_t* temp = cur->next;
+            if (cur->next->next) cur->next->next = cur->next->next;
+            free(temp->item);
+            free(temp);
+        }
+        return;
+    }
+
+    while (cur) {
+        assert(cur->next); ////////////////////////////////////////
+        if (((memBlock_t*)cur->next->item)->start == start) {
+            break;
+        }
+        cur = cur->next;
+    }
+
+    ((memBlock_t*)cur->next->item)->type = 'H';
+
+    if (cur->next->next && ((memBlock_t*)cur->next->next->item)->type == 'H') {
+        ((memBlock_t*)cur->next->item)->length += ((memBlock_t*)cur->next->next->item)->length;
+        listNode_t* temp = cur->next->next;
+        if (cur->next->next->next) cur->next->next = cur->next->next->next;
+        free(temp->item);
+        free(temp);
+    }
+
+    if (((memBlock_t*)cur->item)->type == 'H') {
+        ((memBlock_t*)cur->item)->length += ((memBlock_t*)cur->next->item)->length;
+        listNode_t* temp = cur->next;
+        if (cur->next->next) cur->next->next = cur->next->next;
+        free(temp->item);
+        free(temp);
+    }    
+
+}
