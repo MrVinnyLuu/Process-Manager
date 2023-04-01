@@ -22,6 +22,8 @@ void processRunPrint(process_t* proc, int time);
 
 void processFinPrint(process_t* proc, int time, int procRemaining);
 
+void processMemoryPrint(int time, process_t* proc, int assignAt);
+
 void processFree(process_t* proc);
 
 #endif

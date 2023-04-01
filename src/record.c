@@ -89,11 +89,18 @@ void processPrint(process_t* proc) {
 }
 
 void processRunPrint(process_t* proc, int time) {
-    fprintf(stdout,"%d,RUNNING,process_name=%s,remaining_time=%d\n",time,proc->name,proc->remainTime);
+    fprintf(stdout,"%d,RUNNING,process_name=%s,remaining_time=%d\n",
+            time, proc->name, proc->remainTime);
 }
 
 void processFinPrint(process_t* proc, int time, int procRemaining) {
-    fprintf(stdout,"%d,FINISHED,process_name=%s,proc_remaining=%d\n",time,proc->name,procRemaining);
+    fprintf(stdout,"%d,FINISHED,process_name=%s,proc_remaining=%d\n",
+            time, proc->name, procRemaining);
+}
+
+void processMemoryPrint(int time, process_t* proc, int assignAt) {
+    fprintf(stdout,"%d,READY,process_name=%s,assigned_at=%d\n",
+            time, proc->name, assignAt);
 }
 
 void processFree(process_t* proc) {

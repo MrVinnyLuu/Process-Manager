@@ -6,8 +6,9 @@
 #include "record.h"
 #include "heap.h"
 #include "llist.h"
+#include "memory.h"
 
-#define AVAIL_MEMORY 2048
+#define MAX_MEMORY 2048
 
 typedef struct stats {
     int turnaround;
@@ -157,6 +158,14 @@ stats_t RR(FILE* f, int q, char* memStrat) {
 
 stats_t SJF(FILE* f, int q, char* memStrat) {
 
+    linkedList_t* memory = NULL;
+    // linkedList_t* waiting = NULL;
+    if (strcmp(memStrat, "best-fit") == 0) {
+        memory = llistInit();
+        // waiting = llistInit();
+        memoryInit(memory, MAX_MEMORY);
+    }
+
     heap_t* heap = heapInit();
     stats_t stats = {};
     int numProcesses = 0, totTurnaround = 0;
@@ -164,6 +173,10 @@ stats_t SJF(FILE* f, int q, char* memStrat) {
 
     // Set the time to the start quantum of the first process
     process_t* nextProc = processRead(f);
+    if (memory) {
+        int assignedAt = memoryAlloc(memory, nextProc->memoryRequirement);
+        if (assignedAt != -1) processMemoryPrint(0, nextProc, assignedAt);
+    }
     heapPush(heap, nextProc, processCompare);
     int curTime = (nextProc->arrivalTime%q == 0) ?
                    nextProc->arrivalTime : (nextProc->arrivalTime/q+1)*q;
@@ -171,6 +184,10 @@ stats_t SJF(FILE* f, int q, char* memStrat) {
     // Add to the ready queue processes that arrive at the same time as the first
     nextProc = processRead(f);
     while (nextProc && nextProc->arrivalTime == curTime) {
+        if (memory) {
+            int assignedAt = memoryAlloc(memory, nextProc->memoryRequirement);
+            if (assignedAt != -1) processMemoryPrint(curTime, nextProc, assignedAt);
+        }
         heapPush(heap, nextProc, processCompare);
         nextProc = processRead(f);
     }
@@ -181,6 +198,7 @@ stats_t SJF(FILE* f, int q, char* memStrat) {
 
         // Get the shortest process
         process_t* execProc = heapPop(heap, processCompare);
+        
 
         // Start the process
         processRunPrint(execProc, curTime);
@@ -192,8 +210,13 @@ stats_t SJF(FILE* f, int q, char* memStrat) {
 
         // Add all the jobs that arrive strictly before the finish time
         while (nextProc && nextProc->arrivalTime <= curTime-q) {
+            if (memory) {
+                int assignedAt = memoryAlloc(memory, nextProc->memoryRequirement);
+                if (assignedAt != -1) processMemoryPrint(curTime, nextProc, assignedAt);
+            }
             heapPush(heap, nextProc, processCompare);
             nextProc = processRead(f);
+            
         }
 
         // Complete the running process and update stats
@@ -207,15 +230,24 @@ stats_t SJF(FILE* f, int q, char* memStrat) {
 
         // Add all the jobs that arrive at the same time as the finish time
         while (nextProc && nextProc->arrivalTime <= curTime) {
+            if (memory) {
+                int assignedAt = memoryAlloc(memory, nextProc->memoryRequirement);
+                if (assignedAt != -1) processMemoryPrint(curTime, nextProc, assignedAt);
+            }
             heapPush(heap, nextProc, processCompare);
             nextProc = processRead(f);
+            
         }
 
         // Skip "gaps" in time
         if (heap->n == 0 && nextProc) {
-            heapPush(heap, nextProc, processCompare);
-            int startTime = curTime + nextProc->arrivalTime;
+            int startTime = nextProc->arrivalTime;
             curTime = (startTime%q == 0) ? startTime : (startTime/q+1)*q;
+            if (memory && nextProc) {
+                int assignedAt = memoryAlloc(memory, nextProc->memoryRequirement);
+                if (assignedAt != -1) processMemoryPrint(curTime, nextProc, assignedAt);
+            }
+            heapPush(heap, nextProc, processCompare);
             nextProc = processRead(f);
         }
 
