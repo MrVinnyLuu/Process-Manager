@@ -66,6 +66,7 @@ process_t* processRead(FILE* f) {
     } else {
 
         proc->remainTime = proc->serviceTime;
+        proc->memoryAssignAt = -1;
         return proc;
 
     }
@@ -98,7 +99,7 @@ void processFinPrint(process_t* proc, int time, int procRemaining) {
             time, proc->name, procRemaining);
 }
 
-void processMemoryPrint(int time, process_t* proc, int assignAt) {
+void processReadyPrint(int time, process_t* proc, int assignAt) {
     fprintf(stdout,"%d,READY,process_name=%s,assigned_at=%d\n",
             time, proc->name, assignAt);
 }
