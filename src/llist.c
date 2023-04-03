@@ -17,13 +17,27 @@ linkedList_t* llistInit() {
 
 }
 
-void llistAdd(linkedList_t* llist, void* item) {
+listNode_t* llistNode(void* item) {
 
-    llist->n++;
     listNode_t* newNode = malloc(sizeof(*newNode));
     assert(newNode);
+
     newNode->item = item;
-    if (llist->tail) {
+    newNode->next = NULL;
+    newNode->prev = NULL;
+
+    return newNode;
+
+}
+
+void llistAppend(linkedList_t* llist, void* item) {
+
+    llist->n++;
+
+    listNode_t* newNode = llistNode(item);
+
+    if (llist->head != NULL) {
+        newNode->prev = llist->tail;
         llist->tail->next = newNode;
         llist->tail = newNode;
     } else {
@@ -50,6 +64,10 @@ void* llistPop(linkedList_t* llist) {
 }
 
 void llistFree(linkedList_t* llist) {
+    if (llist->head != NULL) {
+        free(llist->head->item);
+        free(llist->head);
+    }
     free(llist);
 }
 

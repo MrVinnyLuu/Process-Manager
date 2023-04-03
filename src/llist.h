@@ -5,6 +5,7 @@
 typedef struct listNode {
     void* item;
     struct listNode* next;
+    struct listNode* prev;
 } listNode_t;
 
 typedef struct linkedList {
@@ -14,7 +15,8 @@ typedef struct linkedList {
 } linkedList_t;
 
 linkedList_t* llistInit();
-void llistAdd(linkedList_t* llist, void* item);
+listNode_t* llistNode(void* item);
+void llistAppend(linkedList_t* llist, void* item);
 void* llistPop(linkedList_t* llist);
 void llistFree(linkedList_t* llist);
 

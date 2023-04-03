@@ -22,10 +22,11 @@ stats_t RR(FILE* f, int q, char* memStrat);
 
 int main(int argc, char** argv) {
     
-    char* filepath;
-    char* scheduler;
-    char* memStrat;
-    int quantum;
+    // Default settings
+    char* filepath = "cases/task1/simple.txt";
+    char* scheduler = "SJF";
+    char* memStrat = "infinite";
+    int quantum = 1;
 
     for (int i = 1; i < argc; i++) {
         if (strcmp(argv[i], "-f") == 0) {
@@ -50,7 +51,7 @@ int main(int argc, char** argv) {
     // process_t* proc;
     // linkedList_t* llist = llistInit();
     // while ((proc = processRead(f))) {
-    //     llistAdd(llist,proc);
+    //     llistAppend(llist,proc);
     // }
     // while (llist->n != 0) {
     //     processPrint(llistPop(llist));
@@ -91,14 +92,14 @@ stats_t RR(FILE* f, int q, char* memStrat) {
 
     // Set the time to the start quantum of the first process
     process_t* nextProc = processRead(f);
-    llistAdd(queue, nextProc);
+    llistAppend(queue, nextProc);
     int curTime = (nextProc->arrivalTime%q == 0) ?
                    nextProc->arrivalTime : (nextProc->arrivalTime/q+1)*q;
 
     // Add to the ready queue processes that arrive at the same time as the first
     nextProc = processRead(f);
     while (nextProc && nextProc->arrivalTime == curTime) {
-        llistAdd(queue, nextProc);
+        llistAppend(queue, nextProc);
         nextProc = processRead(f);
     }
 
@@ -119,7 +120,7 @@ stats_t RR(FILE* f, int q, char* memStrat) {
 
         // Add all the jobs that have arrived
         while (nextProc && nextProc->arrivalTime <= curTime) {
-            llistAdd(queue, nextProc);
+            llistAppend(queue, nextProc);
             nextProc = processRead(f);
         }
 
@@ -133,12 +134,12 @@ stats_t RR(FILE* f, int q, char* memStrat) {
             stats.maxOverhead = fmax(stats.maxOverhead, curOverhead);
             processFree(execProc);
         } else {
-            llistAdd(queue, execProc);
+            llistAppend(queue, execProc);
         }
 
         // Skip "gaps" in time
         if (queue->n == 0 && nextProc) {
-            llistAdd(queue, nextProc);
+            llistAppend(queue, nextProc);
             int startTime = curTime + nextProc->arrivalTime;
             curTime = (startTime%q == 0) ? startTime : (startTime/q+1)*q;
             nextProc = processRead(f);
@@ -209,10 +210,10 @@ stats_t SJF(FILE* f, int q, char* memStrat) {
         curTime = (finTime%q == 0) ? finTime : (finTime/q + 1) * q;
 
         // Add all the jobs that arrive strictly before the finish time
-        while (nextProc && nextProc->arrivalTime <= curTime-q) {
+        while (nextProc && nextProc->arrivalTime < curTime-q) {
             if (memory) {
                 int assignedAt = memoryAlloc(memory, nextProc->memoryRequirement);
-                if (assignedAt != -1) processMemoryPrint(curTime, nextProc, assignedAt);
+                if (assignedAt != -1) processMemoryPrint(nextProc->arrivalTime, nextProc, assignedAt);
             }
             heapPush(heap, nextProc, processCompare);
             nextProc = processRead(f);
@@ -220,13 +221,22 @@ stats_t SJF(FILE* f, int q, char* memStrat) {
 
         // Complete the running process and update stats
         processFinPrint(execProc, curTime,heap->n);
-        if (memory) memoryFree(memory, 0);
+        if (memory) {
+            memoryFree(memory, 0);
+        }
         int curTurnaround = curTime - execProc->arrivalTime;
         totTurnaround += curTurnaround;
         double curOverhead = (double)curTurnaround/execProc->serviceTime;
         totOverhead += curOverhead;
         stats.maxOverhead = fmax(stats.maxOverhead, curOverhead);
         processFree(execProc);
+
+        // printf("memfree\n");
+        // listNode_t* cur = memory->head;
+        // while (cur) {
+        //     printf("%c, %d, %d\n",((memBlock_t*)cur->item)->type,((memBlock_t*)cur->item)->start,((memBlock_t*)cur->item)->length);
+        //     cur = cur->next;
+        // }
 
         // Add all the jobs that arrive at the same time as the finish time
         while (nextProc && nextProc->arrivalTime <= curTime) {
@@ -236,7 +246,6 @@ stats_t SJF(FILE* f, int q, char* memStrat) {
             }
             heapPush(heap, nextProc, processCompare);
             nextProc = processRead(f);
-            
         }
 
         // Skip "gaps" in time
@@ -254,6 +263,7 @@ stats_t SJF(FILE* f, int q, char* memStrat) {
     }
 
     heapFree(heap);
+    if (memory) llistFree(memory);
 
     stats.turnaround = ceil((double)totTurnaround/numProcesses);
     stats.avgOverhead = totOverhead/numProcesses;

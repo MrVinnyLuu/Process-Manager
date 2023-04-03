@@ -10,53 +10,80 @@ void memoryInit(linkedList_t* memory, int maxMemory) {
     firstBlock->type = 'H';
     firstBlock->start = 0;
     firstBlock->length = maxMemory;
-    llistAdd(memory, firstBlock);
+    llistAppend(memory, firstBlock);
 }
 
 int memoryAlloc(linkedList_t* memory, int size) {
 
     listNode_t* cur = memory->head;
+    listNode_t* bestFit = NULL;
 
     while (cur) {
+
         if (((memBlock_t*)cur->item)->type == 'H'
-            && ((memBlock_t*)cur->item)->length > size) {
-            break;
+            && ((memBlock_t*)cur->item)->length >= size) {
+            
+            // Perfect fit
+            if (((memBlock_t*)cur->item)->length == size) {
+                ((memBlock_t*)cur->item)->type = 'H';
+                return ((memBlock_t*)cur->item)->start;
+            }
+
+            if (bestFit == NULL) {
+                bestFit = cur;
+            } else if (bestFit && ((memBlock_t*)cur->item)->length-size < 
+                    ((memBlock_t*)bestFit->item)->length-size) {
+                bestFit = cur;
+            }
+
         }
+
         cur = cur->next;
+
     }
 
-    // Couldn't fit
-    if (!cur) return -1;
+    // Couldn't find a fit
+    if (!bestFit) return -1;
 
-    ((memBlock_t*)cur->item)->type = 'P';
-    if (((memBlock_t*)cur->item)->length != size) {
-        memBlock_t* newBlock = malloc(sizeof(*newBlock));
-        assert(newBlock);
-        newBlock->type = 'H';
-        newBlock->start = ((memBlock_t*)cur->item)->start+size;
-        newBlock->length = ((memBlock_t*)cur->item)->length-size;
-        listNode_t* newNode = malloc(sizeof(*newNode));
-        assert(newNode);
-        newNode->item = newBlock;
-        if (cur->next) newNode->next = cur->next->next;
-        cur->next = newNode;
+    // Allocate the memory block
+    ((memBlock_t*)bestFit->item)->type = 'P';
+    
+    memBlock_t* newBlock = malloc(sizeof(*newBlock));
+    assert(newBlock);
+    newBlock->type = 'H';
+    newBlock->start = ((memBlock_t*)bestFit->item)->start + size;
+    newBlock->length = ((memBlock_t*)bestFit->item)->length - size;
+
+    listNode_t* newNode = llistNode(newBlock);
+    if (bestFit->next != NULL) {
+        newNode->next = bestFit->next->next;
+        newNode->next->prev = newNode;
     }
-    ((memBlock_t*)cur->item)->length = size;
-
-    return ((memBlock_t*)cur->item)->start;
+    bestFit->next = newNode;
+    newNode->prev = bestFit;
+    
+    ((memBlock_t*)bestFit->item)->length = size;
+    
+    return ((memBlock_t*)bestFit->item)->start;
 
 }
 
 void memoryFree(linkedList_t* memory, int start) {
     
+    // listNode_t* cur = memory->head;
+    // while (cur) {
+    //     printf("%c, %d, %d\n",((memBlock_t*)cur->item)->type,((memBlock_t*)cur->item)->start,((memBlock_t*)cur->item)->length);
+    //     cur = cur->next;
+    // }
+
     listNode_t* cur = memory->head;
 
-    if (((memBlock_t*)cur->item)->start == start) {
+    if (start == 0) {
         ((memBlock_t*)cur->item)->type = 'H';
         if (cur->next && ((memBlock_t*)cur->next->item)->type == 'H') {
             ((memBlock_t*)cur->item)->length += ((memBlock_t*)cur->next->item)->length;
             listNode_t* temp = cur->next;
-            if (cur->next->next) cur->next->next = cur->next->next;
+            cur->next = cur->next->next;
             free(temp->item);
             free(temp);
         }
@@ -84,7 +111,7 @@ void memoryFree(linkedList_t* memory, int start) {
     if (((memBlock_t*)cur->item)->type == 'H') {
         ((memBlock_t*)cur->item)->length += ((memBlock_t*)cur->next->item)->length;
         listNode_t* temp = cur->next;
-        if (cur->next->next) cur->next->next = cur->next->next;
+        if (cur->next->next) cur->next = cur->next->next;
         free(temp->item);
         free(temp);
     }    
