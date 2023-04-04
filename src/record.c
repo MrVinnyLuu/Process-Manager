@@ -54,12 +54,12 @@ void processPrint(process_t* proc) {
     fprintf(stdout, "%d, %s, %d, %d\n", proc->arrivalTime, proc->name, proc->serviceTime, proc->memoryRequirement);
 }
 
-void processRunPrint(process_t* proc, int time) {
+void processRunPrint(int time, process_t* proc) {
     fprintf(stdout,"%d,RUNNING,process_name=%s,remaining_time=%d\n",
             time, proc->name, proc->remainTime);
 }
 
-void processFinPrint(process_t* proc, int time, int procRemaining) {
+void processFinPrint(int time, process_t* proc, int procRemaining) {
     fprintf(stdout,"%d,FINISHED,process_name=%s,proc_remaining=%d\n",
             time, proc->name, procRemaining);
 }

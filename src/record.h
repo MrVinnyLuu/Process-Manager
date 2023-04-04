@@ -25,9 +25,9 @@ int processCompare(void* proc1, void* proc2);
 
 void processPrint(process_t* proc);
 
-void processRunPrint(process_t* proc, int time);
+void processRunPrint(int time, process_t* proc);
 
-void processFinPrint(process_t* proc, int time, int procRemaining);
+void processFinPrint(int time, process_t* proc, int procRemaining);
 
 void processReadyPrint(int time, process_t* proc, int assignAt);
 
