@@ -23,7 +23,7 @@ process_t* memoryAssign(int time, linkedList_t* memory, linkedList_t* waiting,
                         process_t* proc);
 
 process_t* memoryRetry(int time, linkedList_t* memory, linkedList_t* waiting,
-                  listNode_t* try);
+                  listNode_t** try);
 
 int memoryAlloc(linkedList_t* memory, int size);
 

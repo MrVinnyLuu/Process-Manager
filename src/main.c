@@ -176,9 +176,8 @@ stats_t RR(FILE* f, int q, char* memStrat) {
             // Now that there's more space, try to allocate memory to the waiting processes
             listNode_t* try = (memory) ? waiting->head : NULL;
             while (try) {
-                process_t* proc = memoryRetry(curTime, memory, waiting, try);
+                process_t* proc = memoryRetry(curTime, memory, waiting, &try);
                 if (proc) llistAppend(queue, proc);
-                try = try->next;
             }
             
         } else {
@@ -309,9 +308,8 @@ stats_t SJF(FILE* f, int q, char* memStrat) {
         // Now that there's more space, try to allocate memory to the waiting processes
         listNode_t* try = (memory) ? waiting->head : NULL;
         while (try) {
-            process_t* proc = memoryRetry(curTime, memory, waiting, try);
+            process_t* proc = memoryRetry(curTime, memory, waiting, &try);
             if (proc) heapPush(heap, proc, processCompare);
-            try = try->next;
         }
 
         // listNode_t* cur = memory->head;

@@ -36,7 +36,9 @@ process_t* memoryAssign(int time, linkedList_t* memory, linkedList_t* waiting,
 }
 
 process_t* memoryRetry(int time, linkedList_t* memory, linkedList_t* waiting,
-                  listNode_t* try) {
+                  listNode_t** a) {
+    
+    listNode_t* try = *a;
 
     int assignedAt = memoryAlloc(memory, ((process_t*)try->item)->memoryRequirement);
 
@@ -55,13 +57,14 @@ process_t* memoryRetry(int time, linkedList_t* memory, linkedList_t* waiting,
         }
         
         waiting->n--;
-        try = temp->next;
+        *a = (temp->next);
         
         free(temp);
 
         return ret;
 
     } else {
+        *a = (try->next);
         return NULL;
     }
 
