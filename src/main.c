@@ -18,15 +18,17 @@ main.c : main program
 #define MAX_MEMORY 2048
 
 typedef struct stats {
-    int turnaround;
-    double maxOverhead;
-    double avgOverhead;
+    int numProcesses;
+    int totTurnaround, avgTurnaround;
+    double totOverhead, maxOverhead, avgOverhead;
     int makespan;
 } stats_t;
 
 stats_t SJF(FILE* f, int q, char* memStrat);
 stats_t RR(FILE* f, int q, char* memStrat);
 int roundq(int time, int quantum);
+void statsUpdate(int time, stats_t* stats, process_t* proc);
+void statsFinalise(int time, stats_t* stats);
 
 int main(int argc, char** argv) {
     
@@ -67,10 +69,10 @@ int main(int argc, char** argv) {
     }
     
     // Print stats
-    printf("Turnaround time %d\n"
+    printf("Turnaround time %d\n", 
            "Time overhead %.2lf %.2lf\n"
            "Makespan %d\n",
-           stats.turnaround, roundf(stats.maxOverhead*100)/100,
+           stats.avgTurnaround, roundf(stats.maxOverhead*100)/100,
            roundf(stats.avgOverhead*100)/100, stats.makespan);
 
     fclose(f);
@@ -86,6 +88,13 @@ int roundq(int time, int quantum) {
     return (time%quantum == 0) ? time : (time/quantum+1)*quantum;
 }
 
+
+
+
+
+
+
+
 stats_t RR(FILE* f, int q, char* memStrat) {
 
     // Initialise structs
@@ -99,9 +108,7 @@ stats_t RR(FILE* f, int q, char* memStrat) {
         memoryInit(memory, MAX_MEMORY);
     }
     
-    stats_t stats = {};
-    int numProcesses = 0, totTurnaround = 0;
-    double totOverhead = 0;
+    stats_t stats = {0};
 
     // Set the time to the start quantum of the first process
     process_t* nextProc = processRead(f);
@@ -109,12 +116,12 @@ stats_t RR(FILE* f, int q, char* memStrat) {
 
     if (memory) {
         llistAppend(queue,
-                memoryAssign(nextProc->arrivalTime, memory, waiting, nextProc));
+            memoryAssign(nextProc->arrivalTime, memory, waiting, nextProc));
     } else {
         llistAppend(queue, nextProc);
     }
 
-    // Add to the ready queue processes that arrive at the same time as the first
+    // Add to ready queue processes that arrive at the same time as the first
     nextProc = processRead(f);
     while (nextProc && nextProc->arrivalTime == curTime) {
 
@@ -137,7 +144,7 @@ stats_t RR(FILE* f, int q, char* memStrat) {
         // Get the next process
         prevProc = execProc;
         execProc = llistPop(queue);
-        if (execProc->serviceTime == execProc->remainTime) numProcesses++;
+        if (execProc->serviceTime == execProc->remainTime) stats.numProcesses++;
 
         // Run the process
         if (prevProc != execProc) processRunPrint(execProc, curTime);
@@ -164,11 +171,7 @@ stats_t RR(FILE* f, int q, char* memStrat) {
             processFinPrint(execProc, curTime,
                             queue->n + ((memory) ? waiting->n : 0));
 
-            int curTurnaround = curTime - execProc->arrivalTime;
-            totTurnaround += curTurnaround;
-            double curOverhead = (double)curTurnaround/execProc->serviceTime;
-            totOverhead += curOverhead;
-            stats.maxOverhead = fmax(stats.maxOverhead, curOverhead);
+            statsUpdate(curTime, &stats, execProc);
 
             if (memory) memoryFree(memory, execProc->memoryAssignAt);
             processFree(execProc);
@@ -205,9 +208,7 @@ stats_t RR(FILE* f, int q, char* memStrat) {
     }
 
     // Compute stats
-    stats.turnaround = ceil((double)totTurnaround/numProcesses);
-    stats.avgOverhead = totOverhead/numProcesses;
-    stats.makespan = curTime;
+    statsFinalise(curTime, &stats);
 
     // Free real memory
     llistFree(queue);
@@ -219,6 +220,14 @@ stats_t RR(FILE* f, int q, char* memStrat) {
     return stats;
 
 }
+
+
+
+
+
+
+
+
 
 stats_t SJF(FILE* f, int q, char* memStrat) {
 
@@ -233,9 +242,7 @@ stats_t SJF(FILE* f, int q, char* memStrat) {
         memoryInit(memory, MAX_MEMORY);
     }
 
-    stats_t stats = {};
-    int numProcesses = 0, totTurnaround = 0;
-    double totOverhead = 0;
+    stats_t stats = {0};
 
     // Set the time to the start quantum of the first process
     process_t* nextProc = processRead(f);
@@ -269,7 +276,7 @@ stats_t SJF(FILE* f, int q, char* memStrat) {
         
         // Get the shortest process
         process_t* execProc = heapPop(heap, processCompare);
-        numProcesses++;
+        stats.numProcesses++;
 
         // Run the process
         processRunPrint(execProc, curTime);
@@ -292,15 +299,11 @@ stats_t SJF(FILE* f, int q, char* memStrat) {
 
         }        
 
-        // Complete the running process and update stats
+        // Complete the running process
         processFinPrint(execProc, curTime,
                         heap->n + ((memory) ? waiting->n : 0));
         
-        int curTurnaround = curTime - execProc->arrivalTime;
-        totTurnaround += curTurnaround;
-        double curOverhead = (double)curTurnaround/execProc->serviceTime;
-        totOverhead += curOverhead;
-        stats.maxOverhead = fmax(stats.maxOverhead, curOverhead);
+        statsUpdate(curTime, &stats, execProc);
 
         if (memory) memoryFree(memory, execProc->memoryAssignAt);
         processFree(execProc);
@@ -352,11 +355,8 @@ stats_t SJF(FILE* f, int q, char* memStrat) {
 
     }
 
-    // Compute stats
-    stats.turnaround = ceil((double)totTurnaround/numProcesses);
-    stats.avgOverhead = totOverhead/numProcesses;
-    stats.makespan = curTime;
-
+    statsFinalise(curTime, &stats);
+    
     // Free real memory
     heapFree(heap);
 
@@ -368,3 +368,22 @@ stats_t SJF(FILE* f, int q, char* memStrat) {
     return stats;
 
 }
+
+void statsUpdate(int time, stats_t* stats, process_t* proc) {
+
+    int curTurnaround = time - proc->arrivalTime;
+    stats->totTurnaround += curTurnaround;
+
+    double curOverhead = (double)curTurnaround/proc->serviceTime;
+    stats->totOverhead += curOverhead;
+    stats->maxOverhead = fmax(stats->maxOverhead, curOverhead);
+    
+}
+
+void statsFinalise(int time, stats_t* stats) {
+    stats->avgTurnaround = ceil((double)stats->totTurnaround/stats->numProcesses);
+    stats->avgOverhead = stats->totOverhead/stats->numProcesses;
+    stats->makespan = time;
+}
+
+
