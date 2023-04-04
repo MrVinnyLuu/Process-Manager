@@ -19,6 +19,54 @@ void memoryInit(linkedList_t* memory, int maxMemory) {
     llistAppend(memory, firstBlock);
 }
 
+process_t* memoryAssign(int time, linkedList_t* memory, linkedList_t* waiting,
+                  process_t* proc) {
+
+    int assignedAt = memoryAlloc(memory, proc->memoryRequirement);
+
+    if (assignedAt != -1) {
+        processReadyPrint(time, proc, assignedAt);
+        proc->memoryAssignAt = assignedAt;
+        return proc;
+    } else {
+        llistAppend(waiting, proc);
+        return NULL;
+    }
+
+}
+
+process_t* memoryRetry(int time, linkedList_t* memory, linkedList_t* waiting,
+                  listNode_t* try) {
+
+    int assignedAt = memoryAlloc(memory, ((process_t*)try->item)->memoryRequirement);
+
+    if (assignedAt != -1) {
+
+        processReadyPrint(time, ((process_t*)try->item), assignedAt);
+        ((process_t*)try->item)->memoryAssignAt = assignedAt;
+
+        process_t* ret = (process_t*)try->item;
+
+        listNode_t* temp = try;
+        if (try->prev) {
+            try->prev->next = try->next;
+        } else {
+            waiting->head = try->next;
+        }
+        
+        waiting->n--;
+        try = temp->next;
+        
+        free(temp);
+
+        return ret;
+
+    } else {
+        return NULL;
+    }
+
+}
+
 int memoryAlloc(linkedList_t* memory, int size) {
 
     // Find the best-fitting "hole"
@@ -123,3 +171,4 @@ void memoryFree(linkedList_t* memory, int start) {
     }   
 
 }
+

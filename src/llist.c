@@ -38,6 +38,8 @@ listNode_t* llistNode(void* item) {
 
 void llistAppend(linkedList_t* llist, void* item) {
 
+    if (!item) return;
+
     llist->n++;
 
     listNode_t* newNode = llistNode(item);

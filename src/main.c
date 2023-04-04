@@ -105,15 +105,13 @@ stats_t RR(FILE* f, int q, char* memStrat) {
 
     // Set the time to the start quantum of the first process
     process_t* nextProc = processRead(f);
-    llistAppend(queue, nextProc);
     int curTime = roundq(nextProc->arrivalTime, q);
 
     if (memory) {
-        int assignedAt = memoryAlloc(memory, nextProc->memoryRequirement);
-        // First process should always fit
-        assert(assignedAt != -1);
-        processReadyPrint(curTime, nextProc, assignedAt);
-        nextProc->memoryAssignAt = assignedAt;
+        llistAppend(queue,
+                memoryAssign(nextProc->arrivalTime, memory, waiting, nextProc));
+    } else {
+        llistAppend(queue, nextProc);
     }
 
     // Add to the ready queue processes that arrive at the same time as the first
@@ -121,14 +119,8 @@ stats_t RR(FILE* f, int q, char* memStrat) {
     while (nextProc && nextProc->arrivalTime == curTime) {
 
         if (memory) {
-            int assignedAt = memoryAlloc(memory, nextProc->memoryRequirement);
-            if (assignedAt != -1) {
-                processReadyPrint(nextProc->arrivalTime, nextProc, assignedAt);
-                nextProc->memoryAssignAt = assignedAt;
-                llistAppend(queue, nextProc);
-            } else {
-                llistAppend(waiting, nextProc);
-            }
+            llistAppend(queue,
+                memoryAssign(nextProc->arrivalTime, memory, waiting, nextProc));
         } else {
             llistAppend(queue, nextProc);
         }
@@ -156,14 +148,8 @@ stats_t RR(FILE* f, int q, char* memStrat) {
         while (nextProc && nextProc->arrivalTime <= curTime) {
 
             if (memory) {
-                int assignedAt = memoryAlloc(memory, nextProc->memoryRequirement);
-                if (assignedAt != -1) {
-                    processReadyPrint(nextProc->arrivalTime, nextProc, assignedAt);
-                    nextProc->memoryAssignAt = assignedAt;
-                    llistAppend(queue, nextProc);
-                } else {
-                    llistAppend(waiting, nextProc);
-                }
+                llistAppend(queue,
+                    memoryAssign(nextProc->arrivalTime, memory, waiting, nextProc));
             } else {
                 llistAppend(queue, nextProc);
             }
@@ -190,32 +176,9 @@ stats_t RR(FILE* f, int q, char* memStrat) {
             // Now that there's more space, try to allocate memory to the waiting processes
             listNode_t* try = (memory) ? waiting->head : NULL;
             while (try) {
-
-                int assignedAt = memoryAlloc(memory, ((process_t*)try->item)->memoryRequirement);
-
-                if (assignedAt != -1) {
-
-                    processReadyPrint(curTime, ((process_t*)try->item), assignedAt);
-                    ((process_t*)try->item)->memoryAssignAt = assignedAt;
-
-                    llistAppend(queue, ((process_t*)try->item));
-
-                    listNode_t* temp = try;
-                    if (try->prev) {
-                        try->prev->next = try->next;
-                    } else {
-                        waiting->head = try->next;
-                    }
-
-                    waiting->n--;
-                    try = temp->next;
-                    free(temp);
-
-                } else {
-                    try = try->next;
-                }
-
-                
+                process_t* proc = memoryRetry(curTime, memory, waiting, try);
+                if (proc) llistAppend(queue, proc);
+                try = try->next;
             }
             
         } else {
@@ -230,14 +193,8 @@ stats_t RR(FILE* f, int q, char* memStrat) {
             curTime = roundq(nextProc->arrivalTime, q);
 
             if (memory && nextProc) {
-                int assignedAt = memoryAlloc(memory, nextProc->memoryRequirement);
-                if (assignedAt != -1) {
-                    processReadyPrint(curTime, nextProc, assignedAt);
-                    nextProc->memoryAssignAt = assignedAt;
-                    llistAppend(queue, nextProc);
-                } else {
-                    llistAppend(waiting, nextProc);
-                }
+                llistAppend(queue,
+                    memoryAssign(curTime, memory, waiting, nextProc));
             } else {
                 llistAppend(queue, nextProc);
             }
@@ -283,15 +240,14 @@ stats_t SJF(FILE* f, int q, char* memStrat) {
 
     // Set the time to the start quantum of the first process
     process_t* nextProc = processRead(f);
-    heapPush(heap, nextProc, processCompare);
     int curTime = roundq(nextProc->arrivalTime, q);
 
     if (memory) {
-        int assignedAt = memoryAlloc(memory, nextProc->memoryRequirement);
-        // First process should always fit
-        assert(assignedAt != -1);
-        processReadyPrint(curTime, nextProc, assignedAt);
-        nextProc->memoryAssignAt = assignedAt;
+        heapPush(heap,
+                 memoryAssign(curTime, memory, waiting, nextProc),
+                 processCompare);
+    } else {
+        heapPush(heap, nextProc, processCompare);
     }
 
     // Add to the ready queue processes that arrive at the same time as the first
@@ -299,14 +255,9 @@ stats_t SJF(FILE* f, int q, char* memStrat) {
     while (nextProc && nextProc->arrivalTime == curTime) {
 
         if (memory) {
-            int assignedAt = memoryAlloc(memory, nextProc->memoryRequirement);
-            if (assignedAt != -1) {
-                processReadyPrint(nextProc->arrivalTime, nextProc, assignedAt);
-                nextProc->memoryAssignAt = assignedAt;
-                heapPush(heap, nextProc, processCompare);
-            } else {
-                llistAppend(waiting, nextProc);
-            }
+            heapPush(heap,
+                memoryAssign(nextProc->arrivalTime, memory, waiting, nextProc),
+                processCompare);
         } else {
             heapPush(heap, nextProc, processCompare);
         }
@@ -331,14 +282,9 @@ stats_t SJF(FILE* f, int q, char* memStrat) {
         while (nextProc && nextProc->arrivalTime < curTime-q) {
 
             if (memory) {
-                int assignedAt = memoryAlloc(memory, nextProc->memoryRequirement);
-                if (assignedAt != -1) {
-                    processReadyPrint(nextProc->arrivalTime, nextProc, assignedAt); ////time//////////////////////////////
-                    nextProc->memoryAssignAt = assignedAt;
-                    heapPush(heap, nextProc, processCompare);
-                } else {
-                    llistAppend(waiting, nextProc);
-                }
+                heapPush(heap,
+                    memoryAssign(nextProc->arrivalTime, memory, waiting, nextProc),
+                    processCompare);
             } else {
                 heapPush(heap, nextProc, processCompare);
             }
@@ -363,32 +309,9 @@ stats_t SJF(FILE* f, int q, char* memStrat) {
         // Now that there's more space, try to allocate memory to the waiting processes
         listNode_t* try = (memory) ? waiting->head : NULL;
         while (try) {
-            
-            int assignedAt = memoryAlloc(memory, ((process_t*)try->item)->memoryRequirement);
-
-            if (assignedAt != -1) {
-
-                processReadyPrint(curTime, ((process_t*)try->item), assignedAt);
-                ((process_t*)try->item)->memoryAssignAt = assignedAt;
-
-                heapPush(heap, ((process_t*)try->item), processCompare);
-
-                listNode_t* temp = try;
-                if (try->prev) {
-                    try->prev->next = try->next;
-                } else {
-                    waiting->head = try->next;
-                }
-                
-                waiting->n--;
-                try = temp->next;
-                
-                free(temp);
-
-            } else {
-                try = try->next;
-            }
-            
+            process_t* proc = memoryRetry(curTime, memory, waiting, try);
+            if (proc) heapPush(heap, proc, processCompare);
+            try = try->next;
         }
 
         // listNode_t* cur = memory->head;
@@ -401,14 +324,9 @@ stats_t SJF(FILE* f, int q, char* memStrat) {
         while (nextProc && nextProc->arrivalTime <= curTime) {
 
             if (memory) {
-                int assignedAt = memoryAlloc(memory, nextProc->memoryRequirement);
-                if (assignedAt != -1) {
-                    processReadyPrint(curTime, nextProc, assignedAt);
-                    nextProc->memoryAssignAt = assignedAt;
-                    heapPush(heap, nextProc, processCompare);
-                } else {
-                    llistAppend(waiting, nextProc);
-                }
+                heapPush(heap,
+                    memoryAssign(curTime, memory, waiting, nextProc),
+                    processCompare);
             } else {
                 heapPush(heap, nextProc, processCompare);
             }
@@ -423,14 +341,9 @@ stats_t SJF(FILE* f, int q, char* memStrat) {
             curTime = roundq(nextProc->arrivalTime, q);
 
             if (memory && nextProc) {
-                int assignedAt = memoryAlloc(memory, nextProc->memoryRequirement);
-                if (assignedAt != -1) {
-                    processReadyPrint(curTime, nextProc, assignedAt);
-                    nextProc->memoryAssignAt = assignedAt;
-                    heapPush(heap, nextProc, processCompare);
-                } else {
-                    llistAppend(waiting, nextProc);
-                }
+                heapPush(heap,
+                    memoryAssign(curTime, memory, waiting, nextProc),
+                    processCompare);
             } else {
                 heapPush(heap, nextProc, processCompare);
             }

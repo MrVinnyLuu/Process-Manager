@@ -9,6 +9,7 @@ memory.h : Interface of "memory.c"
 #define _MEMORY_H_
 
 #include "llist.h"
+#include "record.h"
 
 typedef struct memBlock {
     char type;
@@ -17,6 +18,12 @@ typedef struct memBlock {
 } memBlock_t;
 
 void memoryInit(linkedList_t* memory, int maxMemory);
+
+process_t* memoryAssign(int time, linkedList_t* memory, linkedList_t* waiting,
+                        process_t* proc);
+
+process_t* memoryRetry(int time, linkedList_t* memory, linkedList_t* waiting,
+                  listNode_t* try);
 
 int memoryAlloc(linkedList_t* memory, int size);
 

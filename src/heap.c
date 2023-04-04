@@ -28,7 +28,9 @@ heap_t* heapInit() {
 
 }
 
-void heapPush(heap_t* heap, void* proc, int (compare)(void*,void*)) {
+void heapPush(heap_t* heap, void* item, int (compare)(void*,void*)) {
+
+    if (!item) return;
 
     heap->n++;
 
@@ -40,17 +42,17 @@ void heapPush(heap_t* heap, void* proc, int (compare)(void*,void*)) {
     }
 
     // Insert at end first
-    heap->heap[heap->n] = proc;
+    heap->heap[heap->n] = item;
 
     // "Heapify" until in right spot
     int i = heap->n;
-    while (i/2 > 0 && compare(heap->heap[i/2], proc)) {
+    while (i/2 > 0 && compare(heap->heap[i/2], item)) {
         heap->heap[i] = heap->heap[i/2];
         i /= 2;
     }
 
     // Insert in the right spot
-    heap->heap[i] = proc;
+    heap->heap[i] = item;
 
 }
 
