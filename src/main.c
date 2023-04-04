@@ -69,7 +69,7 @@ int main(int argc, char** argv) {
     }
     
     // Print stats
-    printf("Turnaround time %d\n", 
+    printf("Turnaround time %d\n"
            "Time overhead %.2lf %.2lf\n"
            "Makespan %d\n",
            stats.avgTurnaround, roundf(stats.maxOverhead*100)/100,
