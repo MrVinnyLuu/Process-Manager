@@ -1,3 +1,9 @@
+/*------------------------------------------------------------------------------
+Vincent Luu, 1269979
+--------------------------------------------------------------------------------
+COMP30023 Project 1: Process Management
+memory.c : Implmentation of simulated memory allocation
+------------------------------------------------------------------------------*/
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -15,21 +21,22 @@ void memoryInit(linkedList_t* memory, int maxMemory) {
 
 int memoryAlloc(linkedList_t* memory, int size) {
 
+    // Find the best-fitting "hole"
     listNode_t* cur = memory->head;
     listNode_t* bestFit = NULL;
-
-    // Find a suitable "hole"
+    
     while (cur) {
 
         if (((memBlock_t*)cur->item)->type == 'H'
             && ((memBlock_t*)cur->item)->length >= size) {
             
-            // Perfect fit
+            // Found a perfect fit
             if (((memBlock_t*)cur->item)->length == size) {
                 ((memBlock_t*)cur->item)->type = 'P';
                 return ((memBlock_t*)cur->item)->start;
             }
 
+            // Update current best-fit
             if (bestFit == NULL) {
                 bestFit = cur;
             } else if (bestFit && ((memBlock_t*)cur->item)->length-size < 
@@ -53,6 +60,7 @@ int memoryAlloc(linkedList_t* memory, int size) {
     newBlock->start = ((memBlock_t*)bestFit->item)->start + size;
     newBlock->length = ((memBlock_t*)bestFit->item)->length - size;
 
+    // Insert into the memory list
     listNode_t* newNode = llistNode(newBlock);
     if (bestFit->next != NULL) {
         newNode->next = bestFit->next;
@@ -78,8 +86,8 @@ void memoryFree(linkedList_t* memory, int start) {
     //     cur = cur->next;
     // }
 
+    // Find the memory block
     listNode_t* cur = memory->head;
-
     while (cur) {
         if (((memBlock_t*)cur->item)->start == start) {
             break;
@@ -87,10 +95,13 @@ void memoryFree(linkedList_t* memory, int start) {
         cur = cur->next;
     }
 
+    // The memory block should always be found
     assert(cur);
 
+    // Change into a hole
     ((memBlock_t*)cur->item)->type = 'H';
     
+    // Attempt to merge with next block
     if (cur->next && ((memBlock_t*)cur->next->item)->type == 'H') {
         ((memBlock_t*)cur->item)->length += ((memBlock_t*)cur->next->item)->length;
         listNode_t* temp = cur->next;
@@ -100,8 +111,8 @@ void memoryFree(linkedList_t* memory, int start) {
         free(temp);
     }
 
+    // Attempt to merge with previous block
     listNode_t* prev = cur->prev;
-
     if (prev && ((memBlock_t*)prev->item)->type == 'H') {
         ((memBlock_t*)prev->item)->length += ((memBlock_t*)prev->next->item)->length;
         listNode_t* temp = prev->next;

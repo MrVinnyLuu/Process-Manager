@@ -1,3 +1,9 @@
+/*------------------------------------------------------------------------------
+Vincent Luu, 1269979
+--------------------------------------------------------------------------------
+COMP30023 Project 1: Process Management
+llist.c : Implmentation of a doubly linked list 
+------------------------------------------------------------------------------*/
 
 #include <stdlib.h>
 #include <assert.h>
@@ -37,12 +43,16 @@ void llistAppend(linkedList_t* llist, void* item) {
     listNode_t* newNode = llistNode(item);
 
     if (llist->head != NULL) {
+
         newNode->prev = llist->tail;
         llist->tail->next = newNode;
         llist->tail = newNode;
+
     } else {
+
         llist->head = newNode;
         llist->tail = newNode;
+
     }
 
 }

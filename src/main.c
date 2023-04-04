@@ -1,3 +1,10 @@
+/*------------------------------------------------------------------------------
+Vincent Luu, 1269979
+--------------------------------------------------------------------------------
+COMP30023 Project 1: Process Management
+main.c : main program
+------------------------------------------------------------------------------*/
+
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -19,6 +26,7 @@ typedef struct stats {
 
 stats_t SJF(FILE* f, int q, char* memStrat);
 stats_t RR(FILE* f, int q, char* memStrat);
+int roundq(int time, int quantum);
 
 int main(int argc, char** argv) {
     
@@ -28,6 +36,7 @@ int main(int argc, char** argv) {
     char* memStrat = "infinite";
     int quantum = 1;
 
+    // Read in settings
     for (int i = 1; i < argc; i++) {
         if (strcmp(argv[i], "-f") == 0) {
             filepath = strdup(argv[++i]);
@@ -50,22 +59,21 @@ int main(int argc, char** argv) {
 
     stats_t stats;
 
+    // Choose scheduler
     if (strcmp(scheduler, "SJF") == 0) {
         stats = SJF(f, quantum, memStrat);
     } else if (strcmp(scheduler, "RR") == 0) {
         stats = RR(f, quantum, memStrat);
-    } else {
-        return 1;
     }
     
-    fprintf(stdout,"Turnaround time %d\n"
-                    "Time overhead %.2lf %.2lf\n"
-                    "Makespan %d\n",
-                    stats.turnaround, roundf(stats.maxOverhead*100)/100,
-                    roundf(stats.avgOverhead*100)/100, stats.makespan);
+    // Print stats
+    printf("Turnaround time %d\n"
+           "Time overhead %.2lf %.2lf\n"
+           "Makespan %d\n",
+           stats.turnaround, roundf(stats.maxOverhead*100)/100,
+           roundf(stats.avgOverhead*100)/100, stats.makespan);
 
     fclose(f);
-
     free(filepath);
     free(scheduler);
     free(memStrat);
@@ -74,7 +82,14 @@ int main(int argc, char** argv) {
 
 }
 
+int roundq(int time, int quantum) {
+    return (time%quantum == 0) ? time : (time/quantum+1)*quantum;
+}
+
 stats_t RR(FILE* f, int q, char* memStrat) {
+
+    // Initialise structs
+    linkedList_t* queue = llistInit();
 
     linkedList_t* memory = NULL;
     linkedList_t* waiting = NULL;
@@ -83,8 +98,7 @@ stats_t RR(FILE* f, int q, char* memStrat) {
         waiting = llistInit();
         memoryInit(memory, MAX_MEMORY);
     }
-
-    linkedList_t* queue = llistInit();
+    
     stats_t stats = {};
     int numProcesses = 0, totTurnaround = 0;
     double totOverhead = 0;
@@ -92,14 +106,13 @@ stats_t RR(FILE* f, int q, char* memStrat) {
     // Set the time to the start quantum of the first process
     process_t* nextProc = processRead(f);
     llistAppend(queue, nextProc);
-    int curTime = (nextProc->arrivalTime%q == 0) ?
-                   nextProc->arrivalTime : (nextProc->arrivalTime/q+1)*q;
+    int curTime = roundq(nextProc->arrivalTime, q);
 
     if (memory) {
         int assignedAt = memoryAlloc(memory, nextProc->memoryRequirement);
         // First process should always fit
         assert(assignedAt != -1);
-        processReadyPrint(0, nextProc, assignedAt);
+        processReadyPrint(curTime, nextProc, assignedAt);
         nextProc->memoryAssignAt = assignedAt;
     }
 
@@ -214,8 +227,7 @@ stats_t RR(FILE* f, int q, char* memStrat) {
         // Skip "gaps" in time
         if (queue->n == 0 && nextProc) {
 
-            int nextTime = nextProc->arrivalTime;
-            curTime = (nextTime%q == 0) ? nextTime : (nextTime/q+1)*q;
+            curTime = roundq(nextProc->arrivalTime, q);
 
             if (memory && nextProc) {
                 int assignedAt = memoryAlloc(memory, nextProc->memoryRequirement);
@@ -254,6 +266,9 @@ stats_t RR(FILE* f, int q, char* memStrat) {
 
 stats_t SJF(FILE* f, int q, char* memStrat) {
 
+    // Initialise structs
+    heap_t* heap = heapInit();
+
     linkedList_t* memory = NULL;
     linkedList_t* waiting = NULL;
     if (strcmp(memStrat, "best-fit") == 0) {
@@ -262,7 +277,6 @@ stats_t SJF(FILE* f, int q, char* memStrat) {
         memoryInit(memory, MAX_MEMORY);
     }
 
-    heap_t* heap = heapInit();
     stats_t stats = {};
     int numProcesses = 0, totTurnaround = 0;
     double totOverhead = 0;
@@ -270,14 +284,13 @@ stats_t SJF(FILE* f, int q, char* memStrat) {
     // Set the time to the start quantum of the first process
     process_t* nextProc = processRead(f);
     heapPush(heap, nextProc, processCompare);
-    int curTime = (nextProc->arrivalTime%q == 0) ?
-                   nextProc->arrivalTime : (nextProc->arrivalTime/q+1)*q;
+    int curTime = roundq(nextProc->arrivalTime, q);
 
     if (memory) {
         int assignedAt = memoryAlloc(memory, nextProc->memoryRequirement);
         // First process should always fit
         assert(assignedAt != -1);
-        processReadyPrint(0, nextProc, assignedAt);
+        processReadyPrint(curTime, nextProc, assignedAt);
         nextProc->memoryAssignAt = assignedAt;
     }
 
@@ -312,8 +325,7 @@ stats_t SJF(FILE* f, int q, char* memStrat) {
         processRunPrint(execProc, curTime);
 
         // Calculate the finish time 
-        int finTime = curTime + execProc->serviceTime;
-        curTime = (finTime%q == 0) ? finTime : (finTime/q + 1) * q;
+        curTime = roundq(curTime + execProc->serviceTime, q);
 
         // Add all the jobs that arrive strictly before the finish time
         while (nextProc && nextProc->arrivalTime < curTime-q) {
@@ -408,8 +420,7 @@ stats_t SJF(FILE* f, int q, char* memStrat) {
         // Skip "gaps" in time
         if (heap->n == 0 && nextProc) {
 
-            int nextTime = nextProc->arrivalTime;
-            curTime = (nextTime%q == 0) ? nextTime : (nextTime/q+1)*q;
+            curTime = roundq(nextProc->arrivalTime, q);
 
             if (memory && nextProc) {
                 int assignedAt = memoryAlloc(memory, nextProc->memoryRequirement);

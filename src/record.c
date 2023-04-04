@@ -1,3 +1,10 @@
+/*------------------------------------------------------------------------------
+Vincent Luu, 1269979
+--------------------------------------------------------------------------------
+COMP30023 Project 1: Process Management
+record.c : Implmentation of a process record
+------------------------------------------------------------------------------*/
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <assert.h>
@@ -5,48 +12,6 @@
 #include "record.h"
 
 #define MAX_NAME_LEN 8
-
-// process_t* processRead(FILE* f) {
-
-//     size_t bufsize = MAX_LINE_LEN+1;
-// 	char *record = malloc(bufsize * sizeof(*record));
-// 	assert(record);
-
-//     int len = getdelim(&record, &bufsize, '\n', f);
-// 	if (len == -1) {
-// 		free(record);
-// 		return NULL;
-// 	}
-	
-// 	process_t* proc = malloc(sizeof(*proc));
-// 	assert(proc);
-
-//     int field = 0;
-//     char* ptr = NULL;
-
-//     ptr = strtok(record, " ");
-//     proc->arrivalTime = atoi(ptr);
-
-//     while (NULL != (ptr = strtok(NULL, " "))) {
-
-//         field++;
-
-//         switch (field) {
-//             case 1:
-//                 proc->name = ptr;
-//             case 2:
-//                 proc->serviceTime = atoi(ptr);
-//             case 3:
-//                 proc->memoryRequirement = atoi(ptr);
-//         }
-
-//     }
-
-//     // printf("%d, %s, %d, %d\n", proc->arrivalTime, proc->name, proc->serviceTime, proc->memoryRequirement);
-
-//     return proc;
-
-// }
 
 process_t* processRead(FILE* f) {
 
@@ -58,16 +23,16 @@ process_t* processRead(FILE* f) {
                &proc->arrivalTime,
                proc->name,
                &proc->serviceTime,
-               &proc->memoryRequirement) != 4) {
-
-        processFree(proc);
-        return NULL;
-
-    } else {
+               &proc->memoryRequirement) == 4) {
 
         proc->remainTime = proc->serviceTime;
         proc->memoryAssignAt = -1;
         return proc;
+
+    } else {
+
+        processFree(proc);
+        return NULL;
 
     }
 
@@ -86,7 +51,7 @@ int processCompare(void* proc1, void* proc2) {
 }
 
 void processPrint(process_t* proc) {
-    fprintf(stdout, "                %d, %s, %d, %d\n", proc->arrivalTime, proc->name, proc->serviceTime, proc->memoryRequirement);
+    fprintf(stdout, "%d, %s, %d, %d\n", proc->arrivalTime, proc->name, proc->serviceTime, proc->memoryRequirement);
 }
 
 void processRunPrint(process_t* proc, int time) {

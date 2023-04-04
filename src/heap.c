@@ -1,12 +1,17 @@
-// Inspiration taken from https://www.sanfoundry.com/c-program-implement-heap/
+/*------------------------------------------------------------------------------
+Vincent Luu, 1269979
+--------------------------------------------------------------------------------
+heap.c : Implementation of a min-heap
+
+Inspiration taken from https://www.sanfoundry.com/c-program-implement-heap/
+------------------------------------------------------------------------------*/
 
 #include <stddef.h>
-#include <stdio.h>
 #include <stdlib.h>
 #include <assert.h>
 #include "heap.h"
 
-#define INIT_SIZE 10
+#define INIT_SIZE 10 // Abitrary initial size
 
 heap_t* heapInit() {
 
@@ -27,33 +32,39 @@ void heapPush(heap_t* heap, void* proc, int (compare)(void*,void*)) {
 
     heap->n++;
 
+    // Ensure size of the array
     if (heap->n == heap->size) {
         heap->size *= 2;
         heap->heap = realloc(heap->heap, heap->size * sizeof(*(heap->heap)));
         assert(heap->heap);
     }
 
+    // Insert at end first
     heap->heap[heap->n] = proc;
 
+    // "Heapify" until in right spot
     int i = heap->n;
-
     while (i/2 > 0 && compare(heap->heap[i/2], proc)) {
         heap->heap[i] = heap->heap[i/2];
         i /= 2;
     }
 
+    // Insert in the right spot
     heap->heap[i] = proc;
 
 }
 
 void* heapPop(heap_t* heap, int (compare)(void*,void*)) {
 
+    // heap[0] is kept empty so minimum item is at [1]
     void* min = heap->heap[1];
     
-    void* last = heap->heap[heap->n--];
+    void* last = heap->heap[heap->n];
+    heap->n--;
     
     int cur, child;
 
+    // Fix the heap
     for (cur = 1; cur*2 <= heap->n; cur = child) {
 
         child = cur*2;
@@ -76,23 +87,7 @@ void* heapPop(heap_t* heap, int (compare)(void*,void*)) {
 
 }
 
-void heapShrink(heap_t* heap) {
-
-    if (heap->size == heap->n) return;
-
-    heap->size = (heap->n > INIT_SIZE) ? heap->n : INIT_SIZE;
-    heap->heap = realloc(heap->heap, heap->size * sizeof(*(heap->heap)));
-    assert(heap->heap);
-
-}
-
 void heapFree(heap_t* heap) {
     free(heap->heap);
     free(heap);
 }
-
-// void heapPrint(heap_t* heap) {
-//     for (int i = 1; i <= heap->n; i++) {
-//         processPrint(heap->heap[i]);
-//     }
-// }
