@@ -9,11 +9,19 @@ main.c : main program
 #include <string.h>
 #include <stdlib.h>
 #include <assert.h>
+#include <ctype.h>
 #include <math.h>
+#include <unistd.h>
+#include <sys/types.h>
+#include <signal.h>
+#include <getopt.h>
+
 #include "record.h"
 #include "heap.h"
 #include "llist.h"
 #include "memory.h"
+
+#define IMPLEMENTS_REAL_PROCESS
 
 #define MAX_MEMORY 2048
 
@@ -30,27 +38,29 @@ int roundq(int time, int quantum);
 void statsUpdate(int time, stats_t* stats, process_t* proc);
 void statsFinalise(int time, stats_t* stats);
 
-int main(int argc, char** argv) {
-    
-    // Default settings
-    char* filepath = "cases/task1/simple.txt";
-    char* scheduler = "SJF";
-    char* memStrat = "infinite";
-    int quantum = 1;
+int main(int argc, char* argv[]) {
 
+    char* filepath = NULL;
+    char* scheduler = NULL;
+    char* memStrat = NULL;
+    int quantum;
+    
     // Read in settings
-    for (int i = 1; i < argc; i++) {
-        if (strcmp(argv[i], "-f") == 0) {
-            filepath = strdup(argv[++i]);
-            assert(filepath);
-        } else if (strcmp(argv[i], "-s") == 0) {
-            scheduler = strdup(argv[++i]);
-            assert(scheduler);
-        } else if (strcmp(argv[i], "-m") == 0) {
-            memStrat = strdup(argv[++i]);
-            assert(memStrat);
-        } else if (strcmp(argv[i], "-q") == 0) {
-            quantum = atoi(argv[++i]);
+    int c;
+    while ((c = getopt(argc, argv, ":f:s:m:q:")) != -1) {
+        switch(c)  {
+            case 'f':
+                filepath = optarg;
+                break;
+            case 's':
+                scheduler = optarg;
+                break;
+            case 'm':
+                memStrat = optarg;
+                break;
+            case 'q':
+                quantum = atoi(optarg);
+                break;
         }
     }
 
@@ -76,11 +86,32 @@ int main(int argc, char** argv) {
            roundf(stats.avgOverhead*100)/100, stats.makespan);
 
     fclose(f);
-    free(filepath);
-    free(scheduler);
-    free(memStrat);
 
     return 0;
+
+    // int fd[2];
+    // pipe(fd);
+
+    // pid_t childpid = fork();
+    // assert(childpid != -1);
+
+    // char* args[] = {"-v", "P1", NULL};
+    // char* noArgs[] = {NULL};
+
+    // if (childpid == 0) {
+    //     // This is the child process
+    //     close(fd[0]);
+    //     close(fd[1]);
+    //     dup2(fd[0], STDIN_FILENO);
+    //     dup2(fd[1], STDOUT_FILENO);
+    //     execv("process", args);
+    //     execv("0", noArgs);
+
+    // } else {
+    //     // This is the parent process
+    // }
+
+    // return 0;
 
 }
 
@@ -259,7 +290,7 @@ stats_t SJF(FILE* f, int q, char* memStrat) {
         heapPush(heap, nextProc, processCompare);
     }
 
-    // Add to the ready queue processes that arrive at the same time as the first
+    // Add to ready queue processes that arrive at the same time as the first
     nextProc = processRead(f);
     while (nextProc && nextProc->arrivalTime == curTime) {
 
