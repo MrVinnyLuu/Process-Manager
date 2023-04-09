@@ -5,6 +5,17 @@ COMP30023 Project 1: Process Management
 main.c : main program
 ------------------------------------------------------------------------------*/
 
+/*
+The order in Section 2 of the specification must always to be followed, regardless of the scheduling algorithm. 
+
+To summarise, that is:
+
+1. Process termination (if applicable). 
+2. Adding incoming processes to the input queue. 
+3. Memory allocation. If allocated successfully, moving the process to the ready queue. 
+4. Scheduling decision. 
+*/
+
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -13,8 +24,10 @@ main.c : main program
 #include <math.h>
 #include <unistd.h>
 #include <sys/types.h>
+#include <sys/wait.h>
 #include <signal.h>
 #include <getopt.h>
+#include <inttypes.h>
 
 #include "record.h"
 #include "heap.h"
@@ -40,78 +53,130 @@ void statsFinalise(int time, stats_t* stats);
 
 int main(int argc, char* argv[]) {
 
-    char* filepath = NULL;
-    char* scheduler = NULL;
-    char* memStrat = NULL;
-    int quantum;
+    // char* filepath = NULL;
+    // char* scheduler = NULL;
+    // char* memStrat = NULL;
+    // int quantum;
     
-    // Read in settings
-    int c;
-    while ((c = getopt(argc, argv, ":f:s:m:q:")) != -1) {
-        switch(c)  {
-            case 'f':
-                filepath = optarg;
-                break;
-            case 's':
-                scheduler = optarg;
-                break;
-            case 'm':
-                memStrat = optarg;
-                break;
-            case 'q':
-                quantum = atoi(optarg);
-                break;
-        }
-    }
+    // // Read in settings
+    // int c;
+    // while ((c = getopt(argc, argv, ":f:s:m:q:")) != -1) {
+    //     switch(c)  {
+    //         case 'f':
+    //             filepath = optarg;
+    //             break;
+    //         case 's':
+    //             scheduler = optarg;
+    //             break;
+    //         case 'm':
+    //             memStrat = optarg;
+    //             break;
+    //         case 'q':
+    //             quantum = atoi(optarg);
+    //             break;
+    //     }
+    // }
 
     // printf("file: %s\nscheduler: %s\nmemstrat: %s\nquantum: %d\n", filepath, scheduler, memStrat, quantum);
 
-    FILE* f = fopen(filepath, "r");
-    assert(f);
+    // FILE* f = fopen(filepath, "r");
+    // assert(f);
 
-    stats_t stats;
+    // stats_t stats;
 
-    // Choose scheduler
-    if (strcmp(scheduler, "SJF") == 0) {
-        stats = SJF(f, quantum, memStrat);
-    } else if (strcmp(scheduler, "RR") == 0) {
-        stats = RR(f, quantum, memStrat);
-    }
-    
-    // Print stats
-    printf("Turnaround time %d\n"
-           "Time overhead %.2lf %.2lf\n"
-           "Makespan %d\n",
-           stats.avgTurnaround, roundf(stats.maxOverhead*100)/100,
-           roundf(stats.avgOverhead*100)/100, stats.makespan);
-
-    fclose(f);
-
-    return 0;
-
-    // int fd[2];
-    // pipe(fd);
-
-    // pid_t childpid = fork();
-    // assert(childpid != -1);
-
-    // char* args[] = {"-v", "P1", NULL};
-    // char* noArgs[] = {NULL};
-
-    // if (childpid == 0) {
-    //     // This is the child process
-    //     close(fd[0]);
-    //     close(fd[1]);
-    //     dup2(fd[0], STDIN_FILENO);
-    //     dup2(fd[1], STDOUT_FILENO);
-    //     execv("process", args);
-    //     execv("0", noArgs);
-
-    // } else {
-    //     // This is the parent process
+    // // Choose scheduler
+    // if (strcmp(scheduler, "SJF") == 0) {
+    //     stats = SJF(f, quantum, memStrat);
+    // } else if (strcmp(scheduler, "RR") == 0) {
+    //     stats = RR(f, quantum, memStrat);
     // }
+    
+    // // Print stats
+    // printf("Turnaround time %d\n"
+    //        "Time overhead %.2lf %.2lf\n"
+    //        "Makespan %d\n",
+    //        stats.avgTurnaround, roundf(stats.maxOverhead*100)/100,
+    //        roundf(stats.avgOverhead*100)/100, stats.makespan);
+
+    // fclose(f);
 
     // return 0;
+
+    int inputPipe[2];
+    assert(pipe(inputPipe) == 0);
+
+    int outputPipe[2];
+    assert(pipe(outputPipe) == 0);
+
+    pid_t pid = fork();
+    assert(pid != -1);
+
+    // This is the child process
+    if (pid == 0) {
+        
+        // Close write end of input pipe
+        close(inputPipe[1]);
+
+        // Duplicate read end of pipe to stdin
+        dup2(inputPipe[0], STDIN_FILENO);
+
+        // Close read end of input pipe
+        close(inputPipe[0]);
+
+
+        // Close read end of output pipe
+        close(outputPipe[0]);
+
+        // Duplicate write end of pipe to stdout
+        dup2(outputPipe[1], STDOUT_FILENO);
+
+        // Close write end of output pipe
+        close(outputPipe[1]);
+
+        // Execute child process
+        char *args[] = {"./process", "P", "-v", NULL};
+        execvp(args[0], args);
+
+        // execvp only returns if there was an error
+        perror("execvp");
+        exit(EXIT_FAILURE);
+
+    // This is the parent process
+    } else {
+        
+        // Close read end of input pipe
+        close(inputPipe[0]);
+
+        // Close write end of output pipe
+        close(outputPipe[1]);
+
+        // Send data to child process
+        char *data = "\x00\x00\x02\x80";
+        write(inputPipe[1], data, 4);
+
+        // Read data from child process
+        char outputBuffer[1024];
+        read(outputPipe[0], outputBuffer, 1);
+        printf("Received from child process: %c\n", outputBuffer[0]);
+
+        // Write data to child process
+        data = "\x00\x00\x02\xBC";
+        write(inputPipe[1], data, 4);
+        
+        // End ./process
+        kill(pid, SIGTERM);
+
+        // Read the hash
+        read(outputPipe[0], outputBuffer, 64);
+        printf("Received from child process: %.64s\n", outputBuffer);        
+
+        int status= 1;
+        wait(&status);
+        printf("Child process exited with status %d\n", status);
+        
+    }
+
+    return 0;
 
 }
 
@@ -123,9 +188,7 @@ int roundq(int time, int quantum) {
 
 
 
-
-
-
+// printf '\x00\x00\x02\x80' | ./process P -v
 
 stats_t RR(FILE* f, int q, char* memStrat) {
 
