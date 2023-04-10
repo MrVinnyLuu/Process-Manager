@@ -370,6 +370,7 @@ stats_t SJF(FILE* f, int q, char* memStrat) {
     // assert(pipe(outputPipe) == 0);
 
     // Set the time to the start quantum of the first process
+    process_t* execProc = NULL;
     process_t* nextProc = processRead(f);
     if (!nextProc) return stats;
     int curTime = roundq(nextProc->arrivalTime, q);
@@ -382,36 +383,36 @@ stats_t SJF(FILE* f, int q, char* memStrat) {
         heapPush(heap, nextProc, processCompare);
     }
 
-    // Add to ready queue processes that arrive at the same time as the first
     nextProc = processRead(f);
-    while (nextProc && nextProc->arrivalTime == curTime) {
 
-        if (memory) {
-            heapPush(heap,
-                memoryAssign(curTime, memory, waiting, nextProc),
-                processCompare);
-        } else {
-            heapPush(heap, nextProc, processCompare);
+    while (heap->n > 0 || nextProc || execProc) {
+
+        if (execProc) execProc->remainTime -= q;
+
+        // Check if running process has completed
+        if (execProc && execProc->remainTime <= 0) {
+            
+            // printf("%d, fin\n", curTime);
+            processFinPrint(curTime, execProc,
+                            heap->n + ((memory) ? waiting->n : 0));
+            
+            statsUpdate(curTime, &stats, execProc);
+
+            if (memory) memoryFree(memory, execProc->memoryAssignAt);
+            processFree(execProc);
+            execProc = NULL;
+
+            // Now there's more space, try allocate memory to the waiting processes
+            listNode_t* try = (memory) ? waiting->head : NULL;
+            while (try) {
+                process_t* proc = memoryRetry(curTime, memory, waiting, &try);
+                if (proc) heapPush(heap, proc, processCompare);
+            }
+
         }
 
-        nextProc = processRead(f);
-
-    }
-
-    while (heap->n > 0) {
-        
-        // Get the shortest process
-        process_t* execProc = heapPop(heap, processCompare);
-        stats.numProcesses++;
-
-        // Run the process
-        processRunPrint(curTime, execProc);
-
-        // Calculate the finish time 
-        curTime = roundq(curTime + execProc->serviceTime, q);
-
-        // Add all the jobs that arrive strictly before the finish time
-        while (nextProc && nextProc->arrivalTime < curTime-q) {
+        // Add all the jobs that arrive
+        while (nextProc && nextProc->arrivalTime <= curTime) {
 
             if (memory) {
                 heapPush(heap,
@@ -423,47 +424,20 @@ stats_t SJF(FILE* f, int q, char* memStrat) {
 
             nextProc = processRead(f);
 
-        }        
+        } 
 
-        // Complete the running process
-        processFinPrint(curTime, execProc,
-                        heap->n + ((memory) ? waiting->n : 0));
-        
-        statsUpdate(curTime, &stats, execProc);
-
-        if (memory) memoryFree(memory, execProc->memoryAssignAt);
-        processFree(execProc);
-
-        // Now there's more space, try allocate memory to the waiting processes
-        listNode_t* try = (memory) ? waiting->head : NULL;
-        while (try) {
-            process_t* proc = memoryRetry(curTime, memory, waiting, &try);
-            if (proc) heapPush(heap, proc, processCompare);
+        // Get and run the shortest process
+        if (!execProc && heap->n > 0) {
+            execProc = heapPop(heap, processCompare);
+            stats.numProcesses++;
+            processRunPrint(curTime, execProc);
         }
 
-        // listNode_t* cur = memory->head;
-        // while (cur) {
-        //     printf("%c, %d, %d\n",((memBlock_t*)cur->item)->type,((memBlock_t*)cur->item)->start,((memBlock_t*)cur->item)->length);
-        //     cur = cur->next;
-        // }
-
-        // Add all the jobs that arrive at the same time as the finish time
-        while (nextProc && nextProc->arrivalTime <= curTime) {
-
-            if (memory) {
-                heapPush(heap,
-                    memoryAssign(curTime, memory, waiting, nextProc),
-                    processCompare);
-            } else {
-                heapPush(heap, nextProc, processCompare);
-            }
-
-            nextProc = processRead(f);
-
-        }
+        // Increment time
+        curTime += q;
 
         // Skip "gaps" in time
-        if (heap->n == 0 && nextProc) {
+        if (heap->n == 0 && nextProc && !execProc) {
 
             curTime = roundq(nextProc->arrivalTime, q);
 
@@ -481,7 +455,7 @@ stats_t SJF(FILE* f, int q, char* memStrat) {
 
     }
 
-    statsFinalise(curTime, &stats);
+    statsFinalise(curTime-q, &stats);
     
     // Free real memory
     heapFree(heap);
