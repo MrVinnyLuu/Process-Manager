@@ -64,6 +64,11 @@ void processFinPrint(int time, process_t* proc, int procRemaining) {
             time, proc->name, procRemaining);
 }
 
+void processSHAPrint(int time, process_t* proc, char* sha) {
+    fprintf(stdout,"%d,FINISHED-PROCESS,process_name=%s,sha=%.64s\n",
+            time, proc->name, sha);
+}
+
 void processReadyPrint(int time, process_t* proc, int assignAt) {
     fprintf(stdout,"%d,READY,process_name=%s,assigned_at=%d\n",
             time, proc->name, assignAt);

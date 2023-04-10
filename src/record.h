@@ -29,6 +29,8 @@ void processRunPrint(int time, process_t* proc);
 
 void processFinPrint(int time, process_t* proc, int procRemaining);
 
+void processSHAPrint(int time, process_t* proc, char* sha);
+
 void processReadyPrint(int time, process_t* proc, int assignAt);
 
 void processFree(process_t* proc);

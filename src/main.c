@@ -34,7 +34,7 @@ To summarise, that is:
 #include "llist.h"
 #include "memory.h"
 
-// #define IMPLEMENTS_REAL_PROCESS
+#define IMPLEMENTS_REAL_PROCESS
 
 #define MAX_MEMORY 2048
 
@@ -48,7 +48,7 @@ typedef struct stats {
 stats_t SJF(FILE* f, int q, char* memStrat);
 stats_t RR(FILE* f, int q, char* memStrat);
 int roundq(int time, int quantum);
-// char* toBigEndian(int number);
+char* toBigEndian(int number);
 void statsUpdate(int time, stats_t* stats, process_t* proc);
 void statsFinalise(int time, stats_t* stats);
 
@@ -103,89 +103,89 @@ int main(int argc, char* argv[]) {
 
     return 0;
 
-    // int inputPipe[2];
-    // assert(pipe(inputPipe) == 0);
+    int inputPipe[2];
+    assert(pipe(inputPipe) == 0);
 
-    // int outputPipe[2];
-    // assert(pipe(outputPipe) == 0);
+    int outputPipe[2];
+    assert(pipe(outputPipe) == 0);
 
-    // pid_t pid = fork();
-    // assert(pid != -1);
+    pid_t pid = fork();
+    assert(pid != -1);
 
-    // // This is the child process
-    // if (pid == 0) {
+    // This is the child process
+    if (pid == 0) {
         
-    //     // Close write end of input pipe
-    //     close(inputPipe[1]);
+        // Close write end of input pipe
+        close(inputPipe[1]);
 
-    //     // Duplicate read end of pipe to stdin
-    //     dup2(inputPipe[0], STDIN_FILENO);
+        // Duplicate read end of pipe to stdin
+        dup2(inputPipe[0], STDIN_FILENO);
 
-    //     // Close read end of input pipe
-    //     close(inputPipe[0]);
+        // Close read end of input pipe
+        close(inputPipe[0]);
 
 
-    //     // Close read end of output pipe
-    //     close(outputPipe[0]);
+        // Close read end of output pipe
+        close(outputPipe[0]);
 
-    //     // Duplicate write end of pipe to stdout
-    //     dup2(outputPipe[1], STDOUT_FILENO);
+        // Duplicate write end of pipe to stdout
+        dup2(outputPipe[1], STDOUT_FILENO);
 
-    //     // Close write end of output pipe
-    //     close(outputPipe[1]);
+        // Close write end of output pipe
+        close(outputPipe[1]);
 
-    //     // Execute child process
-    //     char *args[] = {"./process", "P1", "-v", NULL};
-    //     execvp(args[0], args);
+        // Execute child process
+        char *args[] = {"./process", "P4", "-v", NULL};
+        execvp(args[0], args);
 
-    //     // execvp only returns if there was an error
-    //     perror("execvp");
-    //     exit(EXIT_FAILURE);
+        // execvp only returns if there was an error
+        perror("execvp");
+        exit(EXIT_FAILURE);
 
-    // // This is the parent process
-    // } else {
+    // This is the parent process
+    } else {
         
-    //     // Close read end of input pipe
-    //     close(inputPipe[0]);
+        // Close read end of input pipe
+        close(inputPipe[0]);
 
-    //     // Close write end of output pipe
-    //     close(outputPipe[1]);
+        // Close write end of output pipe
+        close(outputPipe[1]);
 
-    //     // Send data to child process
-    //     char *data = toBigEndian(0);
-    //     write(inputPipe[1], data, 4);
+        // Send data to child process
+        char *data = toBigEndian(50);
+        write(inputPipe[1], data, 4);
 
-    //     // Read data from child process
-    //     char outputBuffer[1024];
-    //     read(outputPipe[0], outputBuffer, 1);
-    //     printf("Received from child process: %c\n", outputBuffer[0]);
+        // Read data from child process
+        char outputBuffer[1024];
+        read(outputPipe[0], outputBuffer, 1);
+        printf("Received from child process: %c\n", outputBuffer[0]);
 
-    //     for (int time = 1; time < 50; time++) {
-    //         data = toBigEndian(time);
-    //         write(inputPipe[1], data, 4);
-    //         kill(pid,SIGCONT);
-    //         read(outputPipe[0], outputBuffer, 64);
-    //         printf("Received from child process: %.64s\n", outputBuffer);
-    //     }
+        for (int time = 51; time < 60; time++) {
+            data = toBigEndian(time);
+            write(inputPipe[1], data, 4);
+            kill(pid,SIGCONT);
+            read(outputPipe[0], outputBuffer, 64);
+            printf("Received from child process: %.64s\n", outputBuffer);
+        }
 
-    //     // Write data to child process
-    //     data = toBigEndian(50);
-    //     write(inputPipe[1], data, 4);
+        // Write data to child process
+        data = toBigEndian(60);
+        write(inputPipe[1], data, 4);
         
-    //     // End ./process
-    //     kill(pid, SIGTERM);
+        // End ./process
+        kill(pid, SIGTERM);
 
-    //     // Read the hash
-    //     read(outputPipe[0], outputBuffer, 64);
-    //     printf("Received from child process: %.64s\n", outputBuffer);        
+        // Read the hash
+        read(outputPipe[0], outputBuffer, 64);
+        printf("Received from child process: %.64s\n", outputBuffer);        
 
-    //     int status= 1;
-    //     wait(&status);
-    //     printf("Child process exited with status %d\n", status);
+        int status= 1;
+        wait(&status);
+        printf("Child process exited with status %d\n", status);
         
-    // }
+    }
 
-    // return 0;
+    return 0;
 
 }
 
@@ -194,23 +194,22 @@ int roundq(int time, int quantum) {
     return (time%quantum == 0) ? time : (time/quantum+1)*quantum;
 }
 
-// char* toBigEndian(int number) {
+char* toBigEndian(int number) {
 
-//     int* p = &number;
+    int* p = &number;
 
-//     char* bytePtr = (char*)p;
+    char* bytePtr = (char*)p;
 
-//     // 4 byte Endian
-//     char* bytes = malloc(4);
+    // 4 byte Endian
+    char* bytes = malloc(4);
 
-//     for (int i = 0; i < 4; i++) {
-//         bytes[i] = bytePtr[3-i];
-//         fprintf(stdout,"%x\n", bytes[i]);
-//     }
+    for (int i = 0; i < 4; i++) {
+        bytes[i] = bytePtr[3-i];
+    }
 
-//     return bytes;
+    return bytes;
 
-// }
+}
 
 
 
@@ -339,7 +338,7 @@ stats_t RR(FILE* f, int q, char* memStrat) {
 
 stats_t SJF(FILE* f, int q, char* memStrat) {
 
-    // Initialise structs
+    // Initialise
     heap_t* heap = heapInit();
 
     linkedList_t* memory = NULL;
@@ -352,12 +351,8 @@ stats_t SJF(FILE* f, int q, char* memStrat) {
 
     stats_t stats = {0};
 
-    // // Set up pipes
-    // int inputPipe[2];
-    // assert(pipe(inputPipe) == 0);
-
-    // int outputPipe[2];
-    // assert(pipe(outputPipe) == 0);
+    int inputPipe[2], outputPipe[2];
+    pid_t pid;
 
     // Set the time to the start quantum of the first process
     process_t* execProc = NULL;
@@ -377,27 +372,56 @@ stats_t SJF(FILE* f, int q, char* memStrat) {
 
     while (heap->n > 0 || nextProc || execProc) {
 
-        if (execProc) execProc->remainTime -= q;
+        if (execProc) {
+            execProc->remainTime -= q;
+        }
 
         // Check if running process has completed
         if (execProc && execProc->remainTime <= 0) {
             
-            // printf("%d, fin\n", curTime);
             processFinPrint(curTime, execProc,
                             heap->n + ((memory) ? waiting->n : 0));
             
             statsUpdate(curTime, &stats, execProc);
 
+            // Write termination time to child process
+            char* timeBytes = toBigEndian(curTime);
+            write(inputPipe[1], timeBytes, 4);
+            free(timeBytes);
+
+            kill(pid, SIGTERM);
+            
+            // Read the hash
+            char hash[64];
+            read(outputPipe[0], hash, 64);
+
+            processSHAPrint(curTime, execProc, hash);
+
             if (memory) memoryFree(memory, execProc->memoryAssignAt);
             processFree(execProc);
             execProc = NULL;
 
-            // Now there's more space, try allocate memory to the waiting processes
+            // Now there's more space, try allocate memory to waiting processes
             listNode_t* try = (memory) ? waiting->head : NULL;
             while (try) {
                 process_t* proc = memoryRetry(curTime, memory, waiting, &try);
                 if (proc) heapPush(heap, proc, processCompare);
             }
+
+        } else if (execProc) {
+
+            // Write continued time to child process
+            char* timeBytes = toBigEndian(curTime);
+            write(inputPipe[1], timeBytes, 4);
+            
+            kill(pid, SIGCONT);
+
+            // Read 1 byte and verify is that same as last byte send
+            char readByte[1];
+            read(outputPipe[0], readByte, 1);
+
+            assert(readByte[0] == timeBytes[3]);
+            free(timeBytes);
 
         }
 
@@ -418,9 +442,65 @@ stats_t SJF(FILE* f, int q, char* memStrat) {
 
         // If no proc running, get and run the shortest process (if possible)
         if (!execProc && heap->n > 0) {
+
             execProc = heapPop(heap, processCompare);
             stats.numProcesses++;
             processRunPrint(curTime, execProc);
+
+            // Set up and check pipes
+            assert(pipe(inputPipe) == 0 && pipe(outputPipe) == 0);
+
+            // Fork and check 
+            assert((pid = fork()) != -1);
+
+            if (pid == 0) {
+                
+                // Close write end of input pipe
+                close(inputPipe[1]);
+
+                // Duplicate read end of pipe to stdin
+                dup2(inputPipe[0], STDIN_FILENO);
+
+                // Close read end of input pipe
+                close(inputPipe[0]);
+
+                // Close read end of output pipe
+                close(outputPipe[0]);
+
+                // Duplicate write end of pipe to stdout
+                dup2(outputPipe[1], STDOUT_FILENO);
+
+                // Close write end of output pipe
+                close(outputPipe[1]);
+
+                // Execute child process
+                char *args[] = {"./process", execProc->name, NULL};
+                execvp(args[0], args);
+
+                // execvp only returns if unsucessful or in there was an error
+                exit(EXIT_FAILURE);
+
+            } else {
+
+                // Close read end of input pipe
+                close(inputPipe[0]);
+
+                // Close write end of output pipe
+                close(outputPipe[1]);
+
+                // Send start time to child process
+                char *timeBytes = toBigEndian(curTime);
+                write(inputPipe[1], timeBytes, 4);
+
+                // Read 1 byte and verify is that same as last byte send
+                char readByte[1];
+                read(outputPipe[0], readByte, 1);
+
+                assert(readByte[0] == timeBytes[3]);
+                free(timeBytes);
+
+            }
+
         }
 
         // Increment time
@@ -449,7 +529,6 @@ stats_t SJF(FILE* f, int q, char* memStrat) {
     
     // Free real memory
     heapFree(heap);
-
     if (memory) {
         llistFree(memory);
         llistFree(waiting);
@@ -471,10 +550,8 @@ void statsUpdate(int time, stats_t* stats, process_t* proc) {
 }
 
 void statsFinalise(int time, stats_t* stats) {
-    stats->avgTurnaround =
+    stats->avgTurnaround = 
         ceil((double)stats->totTurnaround/stats->numProcesses);
     stats->avgOverhead = stats->totOverhead/stats->numProcesses;
     stats->makespan = time;
 }
-
-
