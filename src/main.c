@@ -34,7 +34,7 @@ To summarise, that is:
 #include "llist.h"
 #include "memory.h"
 
-#define IMPLEMENTS_REAL_PROCESS
+// #define IMPLEMENTS_REAL_PROCESS
 
 #define MAX_MEMORY 2048
 
@@ -232,6 +232,8 @@ stats_t RR(FILE* f, int q, char* memStrat) {
     stats_t stats = {0};
 
     // Set the time to the start quantum of the first process
+    process_t* execProc = NULL;
+    process_t* prevProc = NULL;
     process_t* nextProc = processRead(f);
     if (!nextProc) return stats;
     int curTime = roundq(nextProc->arrivalTime, q);
@@ -243,36 +245,10 @@ stats_t RR(FILE* f, int q, char* memStrat) {
         llistAppend(queue, nextProc);
     }
 
-    // Add to ready queue processes that arrive at the same quantum as the first
     nextProc = processRead(f);
-    while (nextProc && nextProc->arrivalTime <= curTime) {
 
-        if (memory) {
-            llistAppend(queue, 
-                memoryAssign(curTime, memory, waiting, nextProc));
-        } else {
-            llistAppend(queue, nextProc);
-        }
+    while (queue->n > 0 || nextProc || execProc) {
         
-        nextProc = processRead(f);
-
-    }
-
-    process_t* execProc = NULL;
-    process_t* prevProc = NULL;
-
-    while (queue->n > 0) {
-        
-        // Get the next process
-        prevProc = execProc;
-        execProc = llistPop(queue);
-        if (execProc->serviceTime == execProc->remainTime) stats.numProcesses++;
-
-        // Run the process
-        if (prevProc != execProc) processRunPrint(curTime, execProc);
-        execProc->remainTime -= q;
-        curTime += q;
-
         // Add all the jobs that have arrived
         while (nextProc && nextProc->arrivalTime <= curTime) {
 
@@ -288,7 +264,7 @@ stats_t RR(FILE* f, int q, char* memStrat) {
         }
 
         // Check to see if the process finished in this quantum
-        if (execProc->remainTime <= 0) {
+        if (execProc && execProc->remainTime <= 0) {
             
             processFinPrint(curTime, execProc,
                             queue->n + ((memory) ? waiting->n : 0));
@@ -297,6 +273,7 @@ stats_t RR(FILE* f, int q, char* memStrat) {
 
             if (memory) memoryFree(memory, execProc->memoryAssignAt);
             processFree(execProc);
+            execProc = NULL;
 
             // Now that there's more space, try to allocate memory to the waiting processes
             listNode_t* try = (memory) ? waiting->head : NULL;
@@ -305,14 +282,27 @@ stats_t RR(FILE* f, int q, char* memStrat) {
                 if (proc) llistAppend(queue, proc);
             }
             
-        } else {
+        } else if (execProc) {
 
             llistAppend(queue, execProc);
 
         }
 
+        // Get and run the next process (if possible)
+        prevProc = execProc;
+        if (queue->n > 0)  {
+            execProc = llistPop(queue);
+            if (execProc->serviceTime == execProc->remainTime) stats.numProcesses++;
+
+            if (prevProc != execProc) processRunPrint(curTime, execProc);
+            execProc->remainTime -= q;
+        }
+        
+        // Increment time
+        curTime += q;
+
         // Skip "gaps" in time
-        if (queue->n == 0 && nextProc) {
+        if (queue->n == 0 && nextProc && !execProc) {
 
             curTime = roundq(nextProc->arrivalTime, q);
 
@@ -330,7 +320,7 @@ stats_t RR(FILE* f, int q, char* memStrat) {
     }
 
     // Compute stats
-    statsFinalise(curTime, &stats);
+    statsFinalise(curTime-q, &stats);
 
     // Free real memory
     llistFree(queue);
@@ -426,7 +416,7 @@ stats_t SJF(FILE* f, int q, char* memStrat) {
 
         } 
 
-        // Get and run the shortest process
+        // If no proc running, get and run the shortest process (if possible)
         if (!execProc && heap->n > 0) {
             execProc = heapPop(heap, processCompare);
             stats.numProcesses++;
