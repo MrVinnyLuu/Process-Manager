@@ -309,6 +309,7 @@ void processSuspend(int time, process_t* proc, int inputFD[2], int outputFD[2]) 
     // Write suspended time to child process
     char* timeBytes = toBigEndian(time);
     write(proc->readInFD, timeBytes, NUM_ENDIAN_BYTES);
+    free(timeBytes);
     
     kill(proc->realPID, SIGTSTP);
 
@@ -426,8 +427,7 @@ stats_t RR(FILE* f, int q, char* memStrat) {
         // Re-queue the running process if not finished
         if (execProc) llistAppend(ready, execProc);
 
-        
-
+    
         // Get and run the next process (if there are any)
         prevProc = execProc;
         if (ready->n > 0)  {
