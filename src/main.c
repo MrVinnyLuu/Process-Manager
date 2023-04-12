@@ -54,9 +54,9 @@ int roundq(int time, int quantum);
 char* toBigEndian(int number);
 
 void processCreate(int time, process_t* proc, int inputFD[2], int outputFD[2]);
-void processCont(int time, process_t* proc, int inputFD[2], int outputFD[2]);
-void processSuspend(int time, process_t* proc, int inputFD[2], int outputFD[2]);
-void processTerm(int time, process_t* proc, int inputFD[2], int outputFD[2]);
+void processCont(int time, process_t* proc);
+void processSuspend(int time, process_t* proc);
+void processTerm(int time, process_t* proc);
 
 void statsUpdate(int time, stats_t* stats, process_t* proc);
 void statsFinalise(int time, stats_t* stats);
@@ -111,90 +111,6 @@ int main(int argc, char* argv[]) {
     fclose(f);
 
     return 0;
-
-    // int inputFD[2];
-    // assert(pipe(inputFD) == 0);
-
-    // int outputFD[2];
-    // assert(pipe(outputFD) == 0);
-
-    // pid_t pid = fork();
-    // assert(pid != -1);
-
-    // // This is the child process
-    // if (pid == 0) {
-        
-    //     // Close write end of input pipe
-    //     close(inputFD[1]);
-
-    //     // Duplicate read end of pipe to stdin
-    //     dup2(inputFD[0], STDIN_FILENO);
-
-    //     // Close read end of input pipe
-    //     close(inputFD[0]);
-
-
-    //     // Close read end of output pipe
-    //     close(outputFD[0]);
-
-    //     // Duplicate write end of pipe to stdout
-    //     dup2(outputFD[1], STDOUT_FILENO);
-
-    //     // Close write end of output pipe
-    //     close(outputFD[1]);
-
-    //     // Execute child process
-    //     char *args[] = {"./process", "P4", "-v", NULL};
-    //     execvp(args[0], args);
-
-    //     // execvp only returns if there was an error
-    //     perror("execvp");
-    //     exit(EXIT_FAILURE);
-
-    // // This is the parent process
-    // } else {
-        
-    //     // Close read end of input pipe
-    //     close(inputFD[0]);
-
-    //     // Close write end of output pipe
-    //     close(outputFD[1]);
-
-    //     // Send data to child process
-    //     char *data = toBigEndian(50);
-    //     write(inputFD[1], data, 4);
-
-    //     // Read data from child process
-    //     char outputBuffer[1024];
-    //     read(outputFD[0], outputBuffer, 1);
-    //     printf("Received from child process: %c\n", outputBuffer[0]);
-
-    //     for (int time = 51; time < 60; time++) {
-    //         data = toBigEndian(time);
-    //         write(inputFD[1], data, 4);
-    //         kill(pid,SIGCONT);
-    //         read(outputFD[0], outputBuffer, 64);
-    //         printf("Received from child process: %.64s\n", outputBuffer);
-    //     }
-
-    //     // Write data to child process
-    //     data = toBigEndian(60);
-    //     write(inputFD[1], data, 4);
-        
-    //     // End ./process
-    //     kill(pid, SIGTERM);
-
-    //     // Read the hash
-    //     read(outputFD[0], outputBuffer, 64);
-    //     printf("Received from child process: %.64s\n", outputBuffer);        
-
-    //     int status= 1;
-    //     wait(&status);
-    //     printf("Child process exited with status %d\n", status);
-        
-    // }
-
-    // return 0;
 
 }
 
@@ -286,7 +202,7 @@ void processCreate(int time, process_t* proc, int inputFD[2], int outputFD[2]) {
 
 }
 
-void processCont(int time, process_t* proc, int inputFD[2], int outputFD[2]) {
+void processCont(int time, process_t* proc) {
     
     // Write continued time to child process
     char* timeBytes = toBigEndian(time);
@@ -304,7 +220,7 @@ void processCont(int time, process_t* proc, int inputFD[2], int outputFD[2]) {
 
 }
 
-void processSuspend(int time, process_t* proc, int inputFD[2], int outputFD[2]) {
+void processSuspend(int time, process_t* proc) {
     
     // Write suspended time to child process
     char* timeBytes = toBigEndian(time);
@@ -323,7 +239,7 @@ void processSuspend(int time, process_t* proc, int inputFD[2], int outputFD[2]) 
 
 }
 
-void processTerm(int time, process_t* proc, int inputFD[2], int outputFD[2]) {
+void processTerm(int time, process_t* proc) {
     
     // Write termination time to child process
     char* timeBytes = toBigEndian(time);
@@ -344,7 +260,6 @@ void processTerm(int time, process_t* proc, int inputFD[2], int outputFD[2]) {
 
 
 
-// printf '\x00\x00\x02\x80' | ./process P -v
 
 stats_t RR(FILE* f, int q, char* memStrat) {
 
@@ -388,7 +303,7 @@ stats_t RR(FILE* f, int q, char* memStrat) {
             statsUpdate(curTime, &stats, execProc);
 
             // Terminate the real process
-            processTerm(curTime, execProc, inputFD, outputFD);
+            processTerm(curTime, execProc);
 
             if (memory) memoryFree(memory, execProc->memoryAssignAt);
             processFree(execProc);
@@ -417,16 +332,15 @@ stats_t RR(FILE* f, int q, char* memStrat) {
 
         }
 
-        if (execProc && ready->n > 0) {
+        if (execProc) {
 
-            // Suspend the real process
-            processSuspend(curTime, execProc, inputFD, outputFD);
+            // Suspend the real process if there are other processes to be run
+            if (ready->n > 0) processSuspend(curTime, execProc);
+
+            // Re-queue the running process if not finished
+            llistAppend(ready, execProc);
 
         }
-
-        // Re-queue the running process if not finished
-        if (execProc) llistAppend(ready, execProc);
-
     
         // Get and run the next process (if there are any)
         prevProc = execProc;
@@ -441,7 +355,7 @@ stats_t RR(FILE* f, int q, char* memStrat) {
                 stats.numProcesses++;
             } else {
                 // Continue the real process
-                processCont(curTime, execProc, inputFD, outputFD);
+                processCont(curTime, execProc);
             }
 
             if (prevProc != execProc) processRunPrint(curTime, execProc);
@@ -533,7 +447,7 @@ stats_t SJF(FILE* f, int q, char* memStrat) {
             statsUpdate(curTime, &stats, execProc);
 
             // Terminate the real process
-            processTerm(curTime, execProc, inputFD, outputFD);
+            processTerm(curTime, execProc);
 
             if (memory) memoryFree(memory, execProc->memoryAssignAt);
             processFree(execProc);
@@ -549,7 +463,7 @@ stats_t SJF(FILE* f, int q, char* memStrat) {
         } else if (execProc) {
             
             // Continue the real process
-            processCont(curTime, execProc, inputFD, outputFD);
+            processCont(curTime, execProc);
 
         }
 
