@@ -14,9 +14,10 @@ typedef struct process {
     int arrivalTime;
     char* name;
     int serviceTime;
-    int remainTime;
+    int remainingTime;
     int memoryRequirement;
     int memoryAssignAt;
+    int realPID;
 } process_t;
 
 process_t* processRead(FILE* f);

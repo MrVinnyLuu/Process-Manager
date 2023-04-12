@@ -25,8 +25,9 @@ process_t* processRead(FILE* f) {
                &proc->serviceTime,
                &proc->memoryRequirement) == 4) {
 
-        proc->remainTime = proc->serviceTime;
+        proc->remainingTime = proc->serviceTime;
         proc->memoryAssignAt = -1;
+        proc->realPID = -1;
         return proc;
 
     } else {
@@ -56,7 +57,7 @@ void processPrint(process_t* proc) {
 
 void processRunPrint(int time, process_t* proc) {
     fprintf(stdout,"%d,RUNNING,process_name=%s,remaining_time=%d\n",
-            time, proc->name, proc->remainTime);
+            time, proc->name, proc->remainingTime);
 }
 
 void processFinPrint(int time, process_t* proc, int procRemaining) {
