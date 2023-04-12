@@ -28,6 +28,8 @@ process_t* processRead(FILE* f) {
         proc->remainingTime = proc->serviceTime;
         proc->memoryAssignAt = -1;
         proc->realPID = -1;
+        proc->writeOutFD = -1;
+        proc->readInFD = -1;
         return proc;
 
     } else {

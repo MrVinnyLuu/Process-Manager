@@ -251,7 +251,8 @@ void processCreate(int time, process_t* proc, int inputFD[2], int outputFD[2]) {
         close(outputFD[1]);
 
         // Execute child process
-        char *args[] = {"./process", "-v", proc->name, NULL};
+        // char *args[] = {"./process", "-v", proc->name, NULL};
+        char *args[] = {"./process", proc->name, NULL};
         execvp(args[0], args);
 
         // execvp only returns if unsucessful or in there was an error
@@ -260,6 +261,8 @@ void processCreate(int time, process_t* proc, int inputFD[2], int outputFD[2]) {
     } else {
 
         proc->realPID = childPID;
+        proc->readInFD = inputFD[1];
+        proc->writeOutFD = outputFD[0];
 
         // Close read end of input pipe
         close(inputFD[0]);
@@ -287,13 +290,13 @@ void processCont(int time, process_t* proc, int inputFD[2], int outputFD[2]) {
     
     // Write continued time to child process
     char* timeBytes = toBigEndian(time);
-    write(inputFD[1], timeBytes, NUM_ENDIAN_BYTES);
+    write(proc->readInFD, timeBytes, NUM_ENDIAN_BYTES);
     
     kill(proc->realPID, SIGCONT);
     
     // Read 1 byte
     char readByte[1];
-    read(outputFD[0], readByte, 1);
+    read(proc->writeOutFD, readByte, 1);
 
     // Verify read byte is the same as last byte send
     assert(readByte[0] == timeBytes[NUM_ENDIAN_BYTES-1]);
@@ -305,7 +308,7 @@ void processSuspend(int time, process_t* proc, int inputFD[2], int outputFD[2]) 
     
     // Write suspended time to child process
     char* timeBytes = toBigEndian(time);
-    write(inputFD[1], timeBytes, NUM_ENDIAN_BYTES);
+    write(proc->readInFD, timeBytes, NUM_ENDIAN_BYTES);
     
     kill(proc->realPID, SIGTSTP);
 
@@ -323,14 +326,14 @@ void processTerm(int time, process_t* proc, int inputFD[2], int outputFD[2]) {
     
     // Write termination time to child process
     char* timeBytes = toBigEndian(time);
-    write(inputFD[1], timeBytes, NUM_ENDIAN_BYTES);
+    write(proc->readInFD, timeBytes, NUM_ENDIAN_BYTES);
     free(timeBytes);
 
     kill(proc->realPID, SIGTERM);
     
     // Read the hash
     char hash[SHA_LEN];
-    read(outputFD[0], hash, SHA_LEN);
+    read(proc->writeOutFD, hash, SHA_LEN);
     processSHAPrint(time, proc, hash);
 
 }
