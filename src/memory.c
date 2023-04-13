@@ -31,8 +31,8 @@ process_t* memoryAssign(int time, linkedList_t* memory, linkedList_t* input) {
     int assignedAt = memoryAlloc(memory, proc->memoryRequirement);
 
     if (assignedAt != -1) {
-        processReadyPrint(time, proc);
         proc->memoryAssignAt = assignedAt;
+        processReadyPrint(time, proc);
         return proc;
     } else {
         llistAppend(input, proc);
