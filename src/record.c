@@ -53,28 +53,21 @@ int processCompare(void* proc1, void* proc2) {
 
 }
 
-void processPrint(process_t* proc) {
-    fprintf(stdout, "%d, %s, %d, %d\n", proc->arrivalTime, proc->name, proc->serviceTime, proc->memoryRequirement);
+void processReadyPrint(int time, process_t* proc, int assignAt) {
+    printf("%d,READY,process_name=%s,assigned_at=%d\n",
+            time, proc->name, assignAt);
 }
 
 void processRunPrint(int time, process_t* proc) {
-    fprintf(stdout,"%d,RUNNING,process_name=%s,remaining_time=%d\n",
+    printf("%d,RUNNING,process_name=%s,remaining_time=%d\n",
             time, proc->name, proc->remainingTime);
 }
 
-void processFinPrint(int time, process_t* proc, int procRemaining) {
-    fprintf(stdout,"%d,FINISHED,process_name=%s,proc_remaining=%d\n",
+void processFinPrint(int time, process_t* proc, int procRemaining, char* hash) {
+    printf("%d,FINISHED,process_name=%s,proc_remaining=%d\n",
             time, proc->name, procRemaining);
-}
-
-void processSHAPrint(int time, process_t* proc, char* sha) {
-    fprintf(stdout,"%d,FINISHED-PROCESS,process_name=%s,sha=%.64s\n",
-            time, proc->name, sha);
-}
-
-void processReadyPrint(int time, process_t* proc, int assignAt) {
-    fprintf(stdout,"%d,READY,process_name=%s,assigned_at=%d\n",
-            time, proc->name, assignAt);
+    printf("%d,FINISHED-PROCESS,process_name=%s,sha=%s\n",
+            time, proc->name, hash);
 }
 
 void processFree(process_t* proc) {

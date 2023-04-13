@@ -19,12 +19,14 @@ void memoryInit(linkedList_t* memory, int maxMemory) {
     llistAppend(memory, firstBlock);
 }
 
+/* Pop and try to allocate memory to head of input queue.
+   If successful (or infinite memory) return the process, else requeue. */
 process_t* memoryAssign(int time, linkedList_t* memory, linkedList_t* input) {
     
     process_t* proc = llistPop(input);
     
     if (!memory) return proc;
-    
+
     int assignedAt = memoryAlloc(memory, proc->memoryRequirement);
 
     if (assignedAt != -1) {
@@ -37,41 +39,6 @@ process_t* memoryAssign(int time, linkedList_t* memory, linkedList_t* input) {
     }
 
 }
-
-// process_t* memoryRetry(int time, linkedList_t* memory, linkedList_t* waiting,
-//                   listNode_t** a) {
-    
-//     listNode_t* try = *a;
-
-//     int assignedAt = memoryAlloc(memory, ((process_t*)try->item)->memoryRequirement);
-
-//     if (assignedAt != -1) {
-
-//         processReadyPrint(time, ((process_t*)try->item), assignedAt);
-//         ((process_t*)try->item)->memoryAssignAt = assignedAt;
-
-//         process_t* ret = (process_t*)try->item;
-
-//         listNode_t* temp = try;
-//         if (try->prev) {
-//             try->prev->next = try->next;
-//         } else {
-//             waiting->head = try->next;
-//         }
-        
-//         waiting->n--;
-//         *a = (temp->next);
-        
-//         free(temp);
-
-//         return ret;
-
-//     } else {
-//         *a = (try->next);
-//         return NULL;
-//     }
-
-// }
 
 int memoryAlloc(linkedList_t* memory, int size) {
 
@@ -133,12 +100,6 @@ int memoryAlloc(linkedList_t* memory, int size) {
 }
 
 void memoryFree(linkedList_t* memory, int start) {
-    
-    // listNode_t* cur = memory->head;
-    // while (cur) {
-    //     printf("%c, %d, %d\n",((memBlock_t*)cur->item)->type,((memBlock_t*)cur->item)->start,((memBlock_t*)cur->item)->length);
-    //     cur = cur->next;
-    // }
 
     // Find the memory block
     listNode_t* cur = memory->head;

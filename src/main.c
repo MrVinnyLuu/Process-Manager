@@ -5,20 +5,9 @@ COMP30023 Project 1: Process Management
 main.c : main program
 ------------------------------------------------------------------------------*/
 
-/*
-The order in Section 2 of the specification must always to be followed, regardless of the scheduling algorithm. 
-
-To summarise, that is:
-
-1. Process termination (if applicable). 
-2. Adding incoming processes to the input queue. 
-3. Memory allocation. If allocated successfully, moving the process to the ready queue. 
-4. Scheduling decision. 
-*/
-
 #include <stdio.h>
-#include <string.h>
 #include <stdlib.h>
+#include <string.h>
 #include <assert.h>
 #include <ctype.h>
 #include <math.h>
@@ -27,7 +16,6 @@ To summarise, that is:
 #include <sys/wait.h>
 #include <signal.h>
 #include <getopt.h>
-#include <inttypes.h>
 
 #include "record.h"
 #include "heap.h"
@@ -36,9 +24,13 @@ To summarise, that is:
 
 #define IMPLEMENTS_REAL_PROCESS
 
+/********************************** CONSTANTS *********************************/
+
 #define MAX_MEMORY 2048
 #define NUM_ENDIAN_BYTES 4
 #define SHA_LEN 64
+
+/********************************* STRUCTURES *********************************/
 
 typedef struct stats {
     int numProcesses;
@@ -47,19 +39,23 @@ typedef struct stats {
     int makespan;
 } stats_t;
 
+/***************************** FUNCTION PROTOTYPES ****************************/
+
 stats_t SJF(FILE* f, int q, char* memStrat);
 stats_t RR(FILE* f, int q, char* memStrat);
-
-int roundq(int time, int quantum);
-char* toBigEndian(int number);
 
 void processCreate(int time, process_t* proc, int inputFD[2], int outputFD[2]);
 void processCont(int time, process_t* proc);
 void processSuspend(int time, process_t* proc);
-void processTerm(int time, process_t* proc);
+char* processTerm(int time, process_t* proc);
 
 void statsUpdate(int time, stats_t* stats, process_t* proc);
 void statsFinalise(int time, stats_t* stats);
+
+int roundq(int time, int quantum);
+char* toBigEndian(int number);
+
+/******************************************************************************/
 
 int main(int argc, char* argv[]) {
 
@@ -87,8 +83,6 @@ int main(int argc, char* argv[]) {
         }
     }
 
-    // printf("file: %s\nscheduler: %s\nmemstrat: %s\nquantum: %d\n", filepath, scheduler, memStrat, quantum);
-
     FILE* f = fopen(filepath, "r");
     assert(f);
 
@@ -114,152 +108,7 @@ int main(int argc, char* argv[]) {
 
 }
 
-/* "Round up" to the nearest multiple of quantum */
-int roundq(int time, int quantum) {
-    return (time%quantum == 0) ? time : (time/quantum+1)*quantum;
-}
-
-/* Convert 32-bit integer into big endian */
-char* toBigEndian(int number) {
-
-    int* p = &number;
-
-    char* bytePtr = (char*)p;
-
-    char* bytes = malloc(NUM_ENDIAN_BYTES);
-    assert(bytes);
-
-    for (int i = 0; i < NUM_ENDIAN_BYTES; i++) {
-        bytes[i] = bytePtr[NUM_ENDIAN_BYTES-1-i];
-    }
-
-    return bytes;
-
-}
-
-void processCreate(int time, process_t* proc, int inputFD[2], int outputFD[2]) {
-    
-    // Set up and check pipes
-    assert(pipe(inputFD) == 0 && pipe(outputFD) == 0);
-
-    // Fork and check
-    pid_t childPID;
-    assert((childPID = fork()) != -1);
-
-    if (childPID == 0) {
-        
-        // Close write end of input pipe
-        close(inputFD[1]);
-
-        // Duplicate read end of pipe to stdin
-        dup2(inputFD[0], STDIN_FILENO);
-
-        // Close read end of input pipe
-        close(inputFD[0]);
-
-        // Close read end of output pipe
-        close(outputFD[0]);
-
-        // Duplicate write end of pipe to stdout
-        dup2(outputFD[1], STDOUT_FILENO);
-
-        // Close write end of output pipe
-        close(outputFD[1]);
-
-        // Execute child process
-        // char *args[] = {"./process", "-v", proc->name, NULL};
-        char *args[] = {"./process", proc->name, NULL};
-        execvp(args[0], args);
-
-        // execvp only returns if unsucessful or in there was an error
-        exit(EXIT_FAILURE);
-
-    } else {
-
-        proc->realPID = childPID;
-        proc->readInFD = inputFD[1];
-        proc->writeOutFD = outputFD[0];
-
-        // Close read end of input pipe
-        close(inputFD[0]);
-
-        // Close write end of output pipe
-        close(outputFD[1]);
-
-        // Send start time to child process
-        char *timeBytes = toBigEndian(time);
-        write(inputFD[1], timeBytes, NUM_ENDIAN_BYTES);
-
-        // Read 1 byte
-        char readByte[1];
-        read(outputFD[0], readByte, 1);
-
-        // Verify read byte is the same as last byte send
-        assert(readByte[0] == timeBytes[NUM_ENDIAN_BYTES-1]);
-        free(timeBytes);
-
-    }
-
-}
-
-void processCont(int time, process_t* proc) {
-    
-    // Write continued time to child process
-    char* timeBytes = toBigEndian(time);
-    write(proc->readInFD, timeBytes, NUM_ENDIAN_BYTES);
-    
-    kill(proc->realPID, SIGCONT);
-    
-    // Read 1 byte
-    char readByte[1];
-    read(proc->writeOutFD, readByte, 1);
-
-    // Verify read byte is the same as last byte send
-    assert(readByte[0] == timeBytes[NUM_ENDIAN_BYTES-1]);
-    free(timeBytes);
-
-}
-
-void processSuspend(int time, process_t* proc) {
-    
-    // Write suspended time to child process
-    char* timeBytes = toBigEndian(time);
-    write(proc->readInFD, timeBytes, NUM_ENDIAN_BYTES);
-    free(timeBytes);
-    
-    kill(proc->realPID, SIGTSTP);
-
-    // Wait for process to enter a stopped state
-    int wstatus;
-    pid_t w;
-    do {
-        w = waitpid(proc->realPID, &wstatus, WUNTRACED);
-        assert(w != -1);
-    } while (!WIFSTOPPED(wstatus));
-
-}
-
-void processTerm(int time, process_t* proc) {
-    
-    // Write termination time to child process
-    char* timeBytes = toBigEndian(time);
-    write(proc->readInFD, timeBytes, NUM_ENDIAN_BYTES);
-    free(timeBytes);
-
-    kill(proc->realPID, SIGTERM);
-    
-    // Read the hash
-    char hash[SHA_LEN];
-    read(proc->writeOutFD, hash, SHA_LEN);
-    processSHAPrint(time, proc, hash);
-
-}
-
-
-
-
-
-
+/********************************** FUNCTIONS *********************************/
 
 stats_t RR(FILE* f, int q, char* memStrat) {
 
@@ -291,14 +140,14 @@ stats_t RR(FILE* f, int q, char* memStrat) {
 
         // Check to see if the process finished in this quantum
         if (execProc && execProc->remainingTime <= 0) {
-            
-            processFinPrint(curTime, execProc,
-                            ready->n + ((memory) ? input->n : 0));
-
-            statsUpdate(curTime, &stats, execProc);
 
             // Terminate the real process
-            processTerm(curTime, execProc);
+            char* hash = processTerm(curTime, execProc);
+            
+            processFinPrint(curTime, execProc, ready->n + input->n, hash);
+            free(hash);
+
+            statsUpdate(curTime, &stats, execProc);
 
             if (memory) memoryFree(memory, execProc->memoryAssignAt);
             processFree(execProc);
@@ -370,10 +219,6 @@ stats_t RR(FILE* f, int q, char* memStrat) {
 
 }
 
-
-
-
-
 stats_t SJF(FILE* f, int q, char* memStrat) {
     
     // Initialise
@@ -408,12 +253,13 @@ stats_t SJF(FILE* f, int q, char* memStrat) {
             // Check if running process has completed
             if (execProc->remainingTime <= 0) {
                 
-                processFinPrint(curTime, execProc, ready->n + input->n);
+                // Terminate the real process
+                char* hash = processTerm(curTime, execProc);
+                
+                processFinPrint(curTime, execProc, ready->n + input->n, hash);
+                free(hash);
                 
                 statsUpdate(curTime, &stats, execProc);
-
-                // Terminate the real process
-                processTerm(curTime, execProc);
 
                 if (memory) memoryFree(memory, execProc->memoryAssignAt);
                 processFree(execProc);
@@ -475,6 +321,113 @@ stats_t SJF(FILE* f, int q, char* memStrat) {
 
 }
 
+/*                         CONTROLLING REAL PROCESSES                         */
+
+void processCreate(int time, process_t* proc, int inputFD[2], int outputFD[2]) {
+    
+    // Set up and check pipes
+    assert(pipe(inputFD) == 0 && pipe(outputFD) == 0);
+
+    // Fork and check
+    pid_t childPID;
+    assert((childPID = fork()) != -1);
+
+    if (childPID == 0) {
+
+        close(inputFD[1]);
+        dup2(inputFD[0], STDIN_FILENO);
+        close(inputFD[0]);
+
+        close(outputFD[0]);
+        dup2(outputFD[1], STDOUT_FILENO);
+        close(outputFD[1]);
+
+        // Execute child process
+        char *args[] = {"./process", proc->name, NULL};
+        execvp(args[0], args);
+
+        // execvp only returns if unsucessful or if there was an error
+        exit(EXIT_FAILURE);
+
+    } else {
+
+        proc->realPID = childPID;
+        proc->readInFD = inputFD[1];
+        proc->writeOutFD = outputFD[0];
+
+        close(inputFD[0]);
+        close(outputFD[1]);
+
+        // Send start time to child process
+        char *timeBytes = toBigEndian(time);
+        write(inputFD[1], timeBytes, NUM_ENDIAN_BYTES);
+
+        // Read 1 byte
+        char readByte[1];
+        read(outputFD[0], readByte, 1);
+
+        // Verify read byte is the same as last byte send
+        assert(readByte[0] == timeBytes[NUM_ENDIAN_BYTES-1]);
+        free(timeBytes);
+
+    }
+
+}
+
+void processCont(int time, process_t* proc) {
+    
+    // Write continued time to child process
+    char* timeBytes = toBigEndian(time);
+    write(proc->readInFD, timeBytes, NUM_ENDIAN_BYTES);
+    
+    kill(proc->realPID, SIGCONT);
+    
+    // Read 1 byte
+    char readByte[1];
+    read(proc->writeOutFD, readByte, 1);
+
+    // Verify read byte is the same as last byte send
+    assert(readByte[0] == timeBytes[NUM_ENDIAN_BYTES-1]);
+    free(timeBytes);
+
+}
+
+void processSuspend(int time, process_t* proc) {
+    
+    // Write suspended time to child process
+    char* timeBytes = toBigEndian(time);
+    write(proc->readInFD, timeBytes, NUM_ENDIAN_BYTES);
+    free(timeBytes);
+    
+    kill(proc->realPID, SIGTSTP);
+
+    // Wait for process to enter a stopped state
+    int wstatus;
+    pid_t w;
+    do {
+        w = waitpid(proc->realPID, &wstatus, WUNTRACED);
+        assert(w != -1);
+    } while (!WIFSTOPPED(wstatus));
+
+}
+
+char* processTerm(int time, process_t* proc) {
+    
+    // Write termination time to child process
+    char* timeBytes = toBigEndian(time);
+    write(proc->readInFD, timeBytes, NUM_ENDIAN_BYTES);
+    free(timeBytes);
+
+    kill(proc->realPID, SIGTERM);
+    
+    // Read and print the hash
+    char* hash = malloc(SHA_LEN);
+    read(proc->writeOutFD, hash, SHA_LEN);
+    
+    return hash;
+
+}
+
 void statsUpdate(int time, stats_t* stats, process_t* proc) {
     int curTurnaround = time - proc->arrivalTime;
     stats->totTurnaround += curTurnaround;
@@ -490,3 +443,30 @@ void statsFinalise(int time, stats_t* stats) {
     stats->avgOverhead = stats->totOverhead/stats->numProcesses;
     stats->makespan = time;
 }
+
+/*                              HELPER FUNCTIONS                              */
+
+/* "Round up" to the nearest multiple of quantum */
+int roundq(int time, int quantum) {
+    return (time%quantum == 0) ? time : (time/quantum+1)*quantum;
+}
+
+/* Convert 32-bit integer into Big Endian Btye Ordering */
+char* toBigEndian(int number) {
+
+    int* p = &number;
+
+    char* bytePtr = (char*)p;
+
+    char* bytes = malloc(NUM_ENDIAN_BYTES);
+    assert(bytes);
+
+    for (int i = 0; i < NUM_ENDIAN_BYTES; i++) {
+        bytes[i] = bytePtr[NUM_ENDIAN_BYTES-1-i];
+    }
+
+    return bytes;
+
+}
+
+/******************************************************************************/
