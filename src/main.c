@@ -421,8 +421,10 @@ char* processTerm(int time, process_t* proc) {
     kill(proc->realPID, SIGTERM);
     
     // Read and print the hash
-    char* hash = malloc(SHA_LEN);
+    char* hash = malloc(SHA_LEN+1);
+    assert(hash);
     read(proc->writeOutFD, hash, SHA_LEN);
+    hash[SHA_LEN] = '\0'; // End the string with null byte
     
     return hash;
 
