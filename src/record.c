@@ -53,9 +53,9 @@ int processCompare(void* proc1, void* proc2) {
 
 }
 
-void processReadyPrint(int time, process_t* proc, int assignAt) {
+void processReadyPrint(int time, process_t* proc) {
     printf("%d,READY,process_name=%s,assigned_at=%d\n",
-            time, proc->name, assignAt);
+            time, proc->name, proc->memoryAssignAt);
 }
 
 void processRunPrint(int time, process_t* proc) {

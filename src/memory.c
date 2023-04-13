@@ -25,12 +25,13 @@ process_t* memoryAssign(int time, linkedList_t* memory, linkedList_t* input) {
     
     process_t* proc = llistPop(input);
     
+    // If infinite memory, no need to assign memory
     if (!memory) return proc;
 
     int assignedAt = memoryAlloc(memory, proc->memoryRequirement);
 
     if (assignedAt != -1) {
-        processReadyPrint(time, proc, assignedAt);
+        processReadyPrint(time, proc);
         proc->memoryAssignAt = assignedAt;
         return proc;
     } else {
@@ -99,14 +100,12 @@ int memoryAlloc(linkedList_t* memory, int size) {
 
 }
 
-void memoryFree(linkedList_t* memory, int start) {
+void memoryFree(linkedList_t* memory, int assignedAt) {
 
     // Find the memory block
     listNode_t* cur = memory->head;
     while (cur) {
-        if (((memBlock_t*)cur->item)->start == start) {
-            break;
-        }
+        if (((memBlock_t*)cur->item)->start == assignedAt) break;
         cur = cur->next;
     }
 

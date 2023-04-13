@@ -38,7 +38,7 @@ listNode_t* llistNode(void* item) {
 
 void llistAppend(linkedList_t* llist, void* item) {
 
-    if (!item) return;
+    assert(item);
 
     llist->n++;
 

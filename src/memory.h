@@ -23,7 +23,7 @@ process_t* memoryAssign(int time, linkedList_t* memory, linkedList_t* input);
 
 int memoryAlloc(linkedList_t* memory, int size);
 
-void memoryFree(linkedList_t* memory, int start);
+void memoryFree(linkedList_t* memory, int assignedAt);
 
 #endif
 

@@ -30,7 +30,7 @@ heap_t* heapInit() {
 
 void heapPush(heap_t* heap, void* item, int (compare)(void*,void*)) {
 
-    if (!item) return;
+    assert(item);
 
     heap->n++;
 

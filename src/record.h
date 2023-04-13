@@ -11,25 +11,19 @@ record.h : Interface of a "record.c"
 #include <stdio.h>
 
 typedef struct process {
-
     int arrivalTime;
     char* name;
-    int serviceTime;
-    int remainingTime;
-    int memoryRequirement;
-    int memoryAssignAt;
-
+    int serviceTime, remainingTime;
+    int memoryRequirement, memoryAssignAt;
     int realPID;
-    int readInFD;
-    int writeOutFD;
-    
+    int readInFD, writeOutFD;
 } process_t;
 
 process_t* processRead(FILE* f);
 
 int processCompare(void* proc1, void* proc2);
 
-void processReadyPrint(int time, process_t* proc, int assignAt);
+void processReadyPrint(int time, process_t* proc);
 
 void processRunPrint(int time, process_t* proc);
 
