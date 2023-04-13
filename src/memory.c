@@ -19,9 +19,12 @@ void memoryInit(linkedList_t* memory, int maxMemory) {
     llistAppend(memory, firstBlock);
 }
 
-process_t* memoryAssign(int time, linkedList_t* memory, linkedList_t* waiting,
-                  process_t* proc) {
-
+process_t* memoryAssign(int time, linkedList_t* memory, linkedList_t* input) {
+    
+    process_t* proc = llistPop(input);
+    
+    if (!memory) return proc;
+    
     int assignedAt = memoryAlloc(memory, proc->memoryRequirement);
 
     if (assignedAt != -1) {
@@ -29,46 +32,46 @@ process_t* memoryAssign(int time, linkedList_t* memory, linkedList_t* waiting,
         proc->memoryAssignAt = assignedAt;
         return proc;
     } else {
-        llistAppend(waiting, proc);
+        llistAppend(input, proc);
         return NULL;
     }
 
 }
 
-process_t* memoryRetry(int time, linkedList_t* memory, linkedList_t* waiting,
-                  listNode_t** a) {
+// process_t* memoryRetry(int time, linkedList_t* memory, linkedList_t* waiting,
+//                   listNode_t** a) {
     
-    listNode_t* try = *a;
+//     listNode_t* try = *a;
 
-    int assignedAt = memoryAlloc(memory, ((process_t*)try->item)->memoryRequirement);
+//     int assignedAt = memoryAlloc(memory, ((process_t*)try->item)->memoryRequirement);
 
-    if (assignedAt != -1) {
+//     if (assignedAt != -1) {
 
-        processReadyPrint(time, ((process_t*)try->item), assignedAt);
-        ((process_t*)try->item)->memoryAssignAt = assignedAt;
+//         processReadyPrint(time, ((process_t*)try->item), assignedAt);
+//         ((process_t*)try->item)->memoryAssignAt = assignedAt;
 
-        process_t* ret = (process_t*)try->item;
+//         process_t* ret = (process_t*)try->item;
 
-        listNode_t* temp = try;
-        if (try->prev) {
-            try->prev->next = try->next;
-        } else {
-            waiting->head = try->next;
-        }
+//         listNode_t* temp = try;
+//         if (try->prev) {
+//             try->prev->next = try->next;
+//         } else {
+//             waiting->head = try->next;
+//         }
         
-        waiting->n--;
-        *a = (temp->next);
+//         waiting->n--;
+//         *a = (temp->next);
         
-        free(temp);
+//         free(temp);
 
-        return ret;
+//         return ret;
 
-    } else {
-        *a = (try->next);
-        return NULL;
-    }
+//     } else {
+//         *a = (try->next);
+//         return NULL;
+//     }
 
-}
+// }
 
 int memoryAlloc(linkedList_t* memory, int size) {
 

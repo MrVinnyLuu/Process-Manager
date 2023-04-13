@@ -19,11 +19,7 @@ typedef struct memBlock {
 
 void memoryInit(linkedList_t* memory, int maxMemory);
 
-process_t* memoryAssign(int time, linkedList_t* memory, linkedList_t* waiting,
-                        process_t* proc);
-
-process_t* memoryRetry(int time, linkedList_t* memory, linkedList_t* waiting,
-                  listNode_t** try);
+process_t* memoryAssign(int time, linkedList_t* memory, linkedList_t* input);
 
 int memoryAlloc(linkedList_t* memory, int size);
 
