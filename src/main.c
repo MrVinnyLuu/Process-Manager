@@ -125,16 +125,13 @@ stats_t RR(FILE* f, int q, char* memStrat) {
     
     int inputFD[2], outputFD[2];
 
-    // Set the time to the start quantum of the first process
-    // Note: not strictly necessary since first process always starts at 0. 
-    process_t* execProc = NULL;
+    // Ready in first process
     process_t* prevProc = NULL;
+    process_t* execProc = NULL;
     process_t* nextProc = processRead(f);
-    int curTime = roundq(nextProc->arrivalTime, q);
 
-    llistAppend(input, nextProc);
-
-    nextProc = processRead(f);
+    // First process always arrives at time 0 according to spec
+    int curTime = 0;
 
     while (ready->n > 0 || input->n > 0 || nextProc || execProc) {
 
@@ -162,7 +159,8 @@ stats_t RR(FILE* f, int q, char* memStrat) {
         }
 
         // Try allocate memory to all processes in input queue
-        for (int i = 0; i < input->n; i++) {
+        int n = input->n;
+        for (int i = 0; i < n; i++) {
             process_t* proc = memoryAssign(curTime, memory, input);
             if (proc) llistAppend(ready, proc);
         }
@@ -234,15 +232,12 @@ stats_t SJF(FILE* f, int q, char* memStrat) {
 
     int inputFD[2], outputFD[2];
 
-    // Set the time to the start quantum of the first process
-    // Note: not strictly necessary since first process always starts at 0. 
+    // Ready in first process
     process_t* execProc = NULL;
     process_t* nextProc = processRead(f);
-    int curTime = roundq(nextProc->arrivalTime, q);
 
-    llistAppend(input, nextProc);
-
-    nextProc = processRead(f);
+    // First process always arrives at time 0 according to spec
+    int curTime = 0;
 
     while (ready->n > 0 || input->n > 0 || nextProc || execProc) {
 
@@ -281,7 +276,8 @@ stats_t SJF(FILE* f, int q, char* memStrat) {
         }
 
         // Try allocate memory to all processes in input queue
-        for (int i = 0; i < input->n; i++) {
+        int n = input->n;
+        for (int i = 0; i < n; i++) {
             process_t* proc = memoryAssign(curTime, memory, input);
             if (proc) heapPush(ready, proc, processCompare);
         }
