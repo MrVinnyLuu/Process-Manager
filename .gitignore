@@ -1,4 +1,5 @@
 allocate
 process
 *.o
-cases/custom
+testing/
+auto_valgrind.sh
