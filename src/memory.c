@@ -59,11 +59,12 @@ int memoryAlloc(linkedList_t* memory, int size) {
             }
 
             // Update current best-fit
-            if (bestFit == NULL) {
+            if (!bestFit ||
+                ((memBlock_t*)cur->item)->length-size < 
+                ((memBlock_t*)bestFit->item)->length-size) {
+
                 bestFit = cur;
-            } else if (bestFit && ((memBlock_t*)cur->item)->length-size < 
-                    ((memBlock_t*)bestFit->item)->length-size) {
-                bestFit = cur;
+
             }
 
         }
@@ -84,7 +85,7 @@ int memoryAlloc(linkedList_t* memory, int size) {
 
     // Insert into the memory list
     listNode_t* newNode = llistNode(newBlock);
-    if (bestFit->next != NULL) {
+    if (bestFit->next) {
         newNode->next = bestFit->next;
         if (newNode->next) newNode->next->prev = newNode;
     }
@@ -117,23 +118,33 @@ void memoryFree(linkedList_t* memory, int assignedAt) {
     
     // Attempt to merge with next block
     if (cur->next && ((memBlock_t*)cur->next->item)->type == 'H') {
-        ((memBlock_t*)cur->item)->length += ((memBlock_t*)cur->next->item)->length;
+
+        ((memBlock_t*)cur->item)->length +=
+            ((memBlock_t*)cur->next->item)->length;
+
         listNode_t* temp = cur->next;
         cur->next = cur->next->next;
         if (cur->next) cur->next->prev = cur;
+
         free(temp->item);
         free(temp);
+
     }
 
     // Attempt to merge with previous block
     listNode_t* prev = cur->prev;
     if (prev && ((memBlock_t*)prev->item)->type == 'H') {
-        ((memBlock_t*)prev->item)->length += ((memBlock_t*)prev->next->item)->length;
-        listNode_t* temp = prev->next;
+
+        ((memBlock_t*)prev->item)->length +=
+            ((memBlock_t*)cur->item)->length;
+
+        listNode_t* temp = cur;
         prev->next = prev->next->next;
         if (prev->next) prev->next->prev = prev;
+
         free(temp->item);
         free(temp);
+
     }   
 
 }

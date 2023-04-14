@@ -140,7 +140,6 @@ stats_t RR(FILE* f, int q, char* memStrat) {
 
             // Terminate the real process
             char* hash = processTerm(curTime, execProc);
-            
             processFinPrint(curTime, execProc, ready->n + input->n, hash);
             free(hash);
 
@@ -162,21 +161,24 @@ stats_t RR(FILE* f, int q, char* memStrat) {
         int n = input->n;
         for (int i = 0; i < n; i++) {
             process_t* proc = memoryAssign(curTime, memory, input);
+            // If successful memory allocation, move to ready queue
             if (proc) llistAppend(ready, proc);
         }
 
+        // If running process is not finished:
         if (execProc) {
             // Suspend the real process if there are other processes to be run
             if (ready->n > 0) processSuspend(curTime, execProc);
-            // Re-queue the running process if not finished
+            // Re-queue
             llistAppend(ready, execProc);
         }
     
         // Get and run the next process (if there are any)
-        prevProc = execProc;
-        if (ready->n > 0)  {
+        if (ready->n > 0) {
 
+            prevProc = execProc;
             execProc = llistPop(ready);
+            if (prevProc != execProc) processRunPrint(curTime, execProc);
 
             // Check if this is an unstarted process
             if (execProc->serviceTime == execProc->remainingTime) {
@@ -188,7 +190,6 @@ stats_t RR(FILE* f, int q, char* memStrat) {
                 processCont(curTime, execProc);
             }
 
-            if (prevProc != execProc) processRunPrint(curTime, execProc);
             execProc->remainingTime -= q;
 
         }
@@ -197,7 +198,7 @@ stats_t RR(FILE* f, int q, char* memStrat) {
         curTime += q;
 
         // Skip "gaps" in time
-        if (ready->n == 0 && nextProc && !execProc) {
+        if (nextProc && ready->n == 0 && !execProc) {
             curTime = roundq(nextProc->arrivalTime, q);
             llistAppend(input, nextProc);
             nextProc = processRead(f);
@@ -244,7 +245,7 @@ stats_t SJF(FILE* f, int q, char* memStrat) {
         if (execProc) {
 
             execProc->remainingTime -= q;
-
+            
             // Check if running process has completed
             if (execProc->remainingTime <= 0) {
                 
@@ -279,6 +280,7 @@ stats_t SJF(FILE* f, int q, char* memStrat) {
         int n = input->n;
         for (int i = 0; i < n; i++) {
             process_t* proc = memoryAssign(curTime, memory, input);
+            // If successful memory allocation, move to ready queue
             if (proc) heapPush(ready, proc, processCompare);
         }
 
@@ -286,19 +288,22 @@ stats_t SJF(FILE* f, int q, char* memStrat) {
         if (!execProc && ready->n > 0) {
 
             execProc = heapPop(ready, processCompare);
-            stats.numProcesses++;
             processRunPrint(curTime, execProc);
 
             // Create and execute a real process
             processCreate(curTime, execProc, inputFD, outputFD);
 
+            
+
+            stats.numProcesses++;
+            
         }
 
         // Increment time
         curTime += q;
 
         // Skip "gaps" in time
-        if (ready->n == 0 && nextProc && !execProc) {
+        if (nextProc && ready->n == 0 && !execProc) {
             curTime = roundq(nextProc->arrivalTime, q);
             llistAppend(input, nextProc);
             nextProc = processRead(f);

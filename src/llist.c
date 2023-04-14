@@ -44,7 +44,7 @@ void llistAppend(linkedList_t* llist, void* item) {
 
     listNode_t* newNode = llistNode(item);
 
-    if (llist->head != NULL) {
+    if (llist->head) {
 
         newNode->prev = llist->tail;
         llist->tail->next = newNode;
@@ -76,9 +76,12 @@ void* llistPop(linkedList_t* llist) {
 }
 
 void llistFree(linkedList_t* llist) {
-    if (llist->head != NULL) {
-        free(llist->head->item);
-        free(llist->head);
+    listNode_t* cur = llist->head;
+    while (cur) {   
+        listNode_t* tmp = cur;
+        cur = cur->next;
+        free(tmp->item);
+        free(tmp);
     }
     free(llist);
 }

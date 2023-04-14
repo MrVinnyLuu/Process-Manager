@@ -34,7 +34,7 @@ void heapPush(heap_t* heap, void* item, int (compare)(void*,void*)) {
 
     heap->n++;
 
-    // Ensure size of the array
+    // Ensure there's space in the array
     if (heap->n == heap->size) {
         heap->size *= 2;
         heap->heap = realloc(heap->heap, heap->size * sizeof(*(heap->heap)));

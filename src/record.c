@@ -41,14 +41,18 @@ process_t* processRead(FILE* f) {
 
 }
 
-int processCompare(void* proc1, void* proc2) {
+int processCompare(void* a, void* b) {
 
-    if (((process_t*)proc1)->serviceTime != ((process_t*)proc2)->serviceTime) {
-        return ((process_t*)proc1)->serviceTime > ((process_t*)proc2)->serviceTime;
-    } else if (((process_t*)proc1)->arrivalTime != ((process_t*)proc2)->arrivalTime) {
-        return ((process_t*)proc1)->arrivalTime > ((process_t*)proc2)->arrivalTime;
+    assert(a && b);
+    process_t* proc1 = ((process_t*)a);
+    process_t* proc2 = ((process_t*)b);
+
+    if (proc1->serviceTime != proc2->serviceTime) {
+        return proc1->serviceTime > proc2->serviceTime;
+    } else if (proc1->arrivalTime != proc2->arrivalTime) {
+        return proc1->arrivalTime > proc2->arrivalTime;
     } else {
-        return strcmp(((process_t*)proc1)->name, ((process_t*)proc2)->name) > 0;
+        return strcmp(proc1->name, proc2->name) > 0;
     }
 
 }
