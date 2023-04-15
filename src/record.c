@@ -41,6 +41,7 @@ process_t* processRead(FILE* f) {
 
 }
 
+/* Return <= 0 if process "a" comes before process "b" according to the spec */
 int processCompare(void* a, void* b) {
 
     assert(a && b);

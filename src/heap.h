@@ -21,6 +21,4 @@ void* heapPop(heap_t* heap, int (compare)(void*,void*));
 
 void heapFree(heap_t* heap);
 
-void heapPrint(heap_t* heap);
-
 #endif

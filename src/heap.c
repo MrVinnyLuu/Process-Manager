@@ -71,8 +71,11 @@ void* heapPop(heap_t* heap, int (compare)(void*,void*)) {
 
         child = cur*2;
 
-        if (child != heap->n && compare(heap->heap[child], heap->heap[child+1])) {
+        if (child != heap->n &&
+            compare(heap->heap[child], heap->heap[child+1])) {
+
             child++;
+            
         }
 
         if (compare(last, heap->heap[child])) {
