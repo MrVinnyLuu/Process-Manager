@@ -11,17 +11,11 @@ memory.h : Interface of "memory.c"
 #include "llist.h"
 #include "record.h"
 
-typedef struct memBlock {
-    char type;
-    int start;
-    int length;
-} memBlock_t;
+typedef struct memBlock memBlock_t;
 
 void memoryInit(linkedList_t* memory, int maxMemory);
 
 process_t* memoryAssign(int time, linkedList_t* memory, linkedList_t* input);
-
-int memoryAlloc(linkedList_t* memory, int size);
 
 void memoryFree(linkedList_t* memory, int assignedAt);
 

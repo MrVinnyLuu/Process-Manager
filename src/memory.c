@@ -10,6 +10,15 @@ memory.c : Implmentation of simulated memory allocation
 #include <assert.h>
 #include "memory.h"
 
+typedef struct memBlock {
+    char type;
+    int start;
+    int length;
+} memBlock_t;
+
+int memoryAlloc(linkedList_t* memory, int size);
+
+
 void memoryInit(linkedList_t* memory, int maxMemory) {
     memBlock_t* firstBlock = malloc(sizeof(*firstBlock));
     assert(firstBlock);
