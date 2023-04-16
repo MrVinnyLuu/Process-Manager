@@ -133,14 +133,17 @@ stats_t RR(FILE* f, int q, char* memStrat) {
     // First process always arrives at time 0 according to spec
     int curTime = 0;
 
-    while (ready->n > 0 || input->n > 0 || nextProc || execProc) {
+    while (llistLen(ready) > 0 || llistLen(input) > 0 || nextProc || execProc) {
 
         // Check to see if the process finished in this quantum
         if (execProc && processRemainingTime(execProc) <= 0) {
 
             // Terminate the real process
             char* hash = processTerm(curTime, execProc);
-            processFinPrint(curTime, execProc, ready->n + input->n, hash);
+
+            processFinPrint(curTime, execProc,
+                llistLen(ready) + llistLen(input), hash);
+
             free(hash);
 
             statsUpdate(curTime, &stats, execProc);
@@ -161,7 +164,7 @@ stats_t RR(FILE* f, int q, char* memStrat) {
         }
 
         // Try allocate memory to all processes in input queue
-        int n = input->n;
+        int n = llistLen(input);
         for (int i = 0; i < n; i++) {
             process_t* proc = memoryAssign(curTime, memory, input);
             // If successful memory allocation, move to ready queue
@@ -171,13 +174,13 @@ stats_t RR(FILE* f, int q, char* memStrat) {
         // If running process is not finished:
         if (execProc) {
             // Suspend the real process if there are other processes to be run
-            if (ready->n > 0) processSuspend(curTime, execProc);
+            if (llistLen(ready) > 0) processSuspend(curTime, execProc);
             // Re-queue
             llistAppend(ready, execProc);
         }
     
         // Get and run the next process (if there are any)
-        if (ready->n > 0) {
+        if (llistLen(ready) > 0) {
 
             prevProc = execProc;
             execProc = llistPop(ready);
@@ -195,7 +198,7 @@ stats_t RR(FILE* f, int q, char* memStrat) {
 
                 // Continue the real process
                 processCont(curTime, execProc);
-                
+
             }
 
             processIncrement(execProc, q);
@@ -206,7 +209,7 @@ stats_t RR(FILE* f, int q, char* memStrat) {
         curTime += q;
 
         // Skip "gaps" in time
-        if (nextProc && ready->n == 0 && !execProc) {
+        if (nextProc && llistLen(ready) == 0 && !execProc) {
             curTime = roundq(processArrivalTime(nextProc), q);
             llistAppend(input, nextProc);
             nextProc = processRead(f);
@@ -248,7 +251,7 @@ stats_t SJF(FILE* f, int q, char* memStrat) {
     // First process always arrives at time 0 according to spec
     int curTime = 0;
 
-    while (ready->n > 0 || input->n > 0 || nextProc || execProc) {
+    while (ready->n > 0 || llistLen(input) > 0 || nextProc || execProc) {
 
         if (execProc) {
 
@@ -260,7 +263,7 @@ stats_t SJF(FILE* f, int q, char* memStrat) {
                 // Terminate the real process
                 char* hash = processTerm(curTime, execProc);
                 
-                processFinPrint(curTime, execProc, ready->n + input->n, hash);
+                processFinPrint(curTime, execProc, ready->n + llistLen(input), hash);
                 free(hash);
                 
                 statsUpdate(curTime, &stats, execProc);
@@ -288,7 +291,7 @@ stats_t SJF(FILE* f, int q, char* memStrat) {
         }
 
         // Try allocate memory to all processes in input queue
-        int n = input->n;
+        int n = llistLen(input);
         for (int i = 0; i < n; i++) {
             process_t* proc = memoryAssign(curTime, memory, input);
             // If successful memory allocation, move to ready queue

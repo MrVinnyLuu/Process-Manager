@@ -9,6 +9,18 @@ llist.c : Implmentation of a doubly linked list
 #include <assert.h>
 #include "llist.h"
 
+struct listNode {
+    void* item;
+    struct listNode* next;
+    struct listNode* prev;
+};
+
+struct linkedList {
+    listNode_t* head;
+    listNode_t* tail;
+    int n;
+};
+
 linkedList_t* llistInit() {
 
     linkedList_t* llist = malloc(sizeof(*llist));
@@ -84,5 +96,35 @@ void llistFree(linkedList_t* llist) {
         free(tmp);
     }
     free(llist);
+}
+
+/*                               Getters/Setters                              */
+
+int llistLen(linkedList_t* llist) {
+    return llist->n;
+}
+
+listNode_t* llistHead(linkedList_t* llist) {
+    return llist->head;
+}
+
+listNode_t* nodeItem(listNode_t* node) {
+    return node->item;
+}
+
+listNode_t* nodeNext(listNode_t* node) {
+    return node->next;
+}
+
+listNode_t* nodePrev(listNode_t* node) {
+    return node->prev;
+}
+
+void nodeSetNext(listNode_t* node, listNode_t* next) {
+    node->next = next;
+}
+
+void nodeSetPrev(listNode_t* node, listNode_t* prev) {
+    node->prev = prev;
 }
 
