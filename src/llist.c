@@ -48,54 +48,52 @@ listNode_t* llistNode(void* item) {
 
 }
 
-void llistAppend(linkedList_t* llist, void* item) {
-
-    assert(item);
+void llistAppend(linkedList_t* llist, listNode_t* node) {
 
     llist->n++;
 
-    listNode_t* newNode = llistNode(item);
+    if (llist->n > 1) {
 
-    if (llist->head) {
-
-        newNode->prev = llist->tail;
-        llist->tail->next = newNode;
-        llist->tail = newNode;
+        node->prev = llist->tail;
+        llist->tail->next = node;
+        llist->tail = node;
 
     } else {
 
-        llist->head = newNode;
-        llist->tail = newNode;
+        llist->head = node;
+        llist->tail = node;
 
     }
 
 }
 
-void* llistPop(linkedList_t* llist) {
+listNode_t* llistPop(linkedList_t* llist) {
 
     llist->n--;
     if (llist->n == 0) llist->tail = NULL;
 
-    listNode_t* prevHead = llist->head;
-    void* ret = prevHead->item;
+    listNode_t* ret = llist->head;
 
     llist->head = llist->head->next;
-    
-    free(prevHead);
 
     return ret;
 
 }
 
 void llistFree(linkedList_t* llist) {
-    listNode_t* cur = llist->head;
-    while (cur) {   
-        listNode_t* tmp = cur;
-        cur = cur->next;
-        free(tmp->item);
-        free(tmp);
+
+    if (llist->n > 0) {
+        listNode_t* cur = llist->head;
+        while (cur) {   
+            listNode_t* tmp = cur;
+            cur = cur->next;
+            free(tmp->item);
+            free(tmp);
+        }
     }
+
     free(llist);
+    
 }
 
 /*                               Getters/Setters                              */
@@ -108,7 +106,7 @@ listNode_t* llistHead(linkedList_t* llist) {
     return llist->head;
 }
 
-listNode_t* nodeItem(listNode_t* node) {
+void* nodeItem(listNode_t* node) {
     return node->item;
 }
 

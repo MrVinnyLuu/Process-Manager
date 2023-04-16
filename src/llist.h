@@ -16,9 +16,9 @@ linkedList_t* llistInit();
 
 listNode_t* llistNode(void* item);
 
-void llistAppend(linkedList_t* llist, void* item);
+void llistAppend(linkedList_t* llist, listNode_t* node);
 
-void* llistPop(linkedList_t* llist);
+listNode_t* llistPop(linkedList_t* llist);
 
 void llistFree(linkedList_t* llist);
 
@@ -28,7 +28,7 @@ int llistLen(linkedList_t* llist);
 
 listNode_t* llistHead(linkedList_t* llist);
 
-listNode_t* nodeItem(listNode_t* node);
+void* nodeItem(listNode_t* node);
 
 listNode_t* nodeNext(listNode_t* node);
 

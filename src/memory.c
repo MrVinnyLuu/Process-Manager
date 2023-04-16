@@ -24,26 +24,31 @@ void memoryInit(linkedList_t* memory, int maxMemory) {
     firstBlock->type = 'H';
     firstBlock->start = 0;
     firstBlock->length = maxMemory;
-    llistAppend(memory, firstBlock);
+    llistAppend(memory, llistNode(firstBlock));
 }
 
 /* Pop and try to allocate memory to head of input queue.
    If successful (or infinite memory) return the process, else requeue. */
 process_t* memoryAssign(int time, linkedList_t* memory, linkedList_t* input) {
     
-    process_t* proc = llistPop(input);
+    listNode_t* cur = llistPop(input);
+    process_t* proc = nodeItem(cur);
     
     // If infinite memory, no need to assign memory
-    if (!memory) return proc;
-
+    if (!memory) {
+        free(cur);
+        return proc;
+    }
+    
     int assignedAt = memoryAlloc(memory, processMemoryRequirement(proc));
 
     if (assignedAt != -1) {
         processAssignMemory(proc, assignedAt);
         processReadyPrint(time, proc);
+        free(cur);
         return proc;
     } else {
-        llistAppend(input, proc);
+        llistAppend(input, cur);
         return NULL;
     }
 

@@ -132,6 +132,7 @@ stats_t RR(FILE* f, int q, char* memStrat) {
     // Ready in first process
     process_t* prevProc = NULL;
     process_t* execProc = NULL;
+    listNode_t* execNode = NULL;
     process_t* nextProc = processRead(f);
 
     // First process always arrives at time 0 according to spec
@@ -157,13 +158,14 @@ stats_t RR(FILE* f, int q, char* memStrat) {
             }
 
             processFree(execProc);
+            free(execNode);
             execProc = NULL;
             
         }
 
         // Add all the jobs that have arrived to input queue
         while (nextProc && processArrivalTime(nextProc) <= curTime) {
-            llistAppend(input, nextProc);
+            llistAppend(input, llistNode(nextProc));
             nextProc = processRead(f);
         }
 
@@ -173,7 +175,7 @@ stats_t RR(FILE* f, int q, char* memStrat) {
             // memoryAssign() pops, tries to allocate & requeues if unsucessful
             process_t* proc = memoryAssign(curTime, memory, input);
             // If successful, move to ready queue
-            if (proc) llistAppend(ready, proc);
+            if (proc) llistAppend(ready, llistNode(proc));
         }
 
         // If running process is not finished:
@@ -181,14 +183,16 @@ stats_t RR(FILE* f, int q, char* memStrat) {
             // Suspend the real process if there are other processes to be run
             if (llistLen(ready) > 0) processSuspend(curTime, execProc, endianBuf);
             // Re-queue
-            llistAppend(ready, execProc);
+            llistAppend(ready, execNode);
         }
     
         // Get and run the next process (if there are any)
         if (llistLen(ready) > 0) {
 
             prevProc = execProc;
-            execProc = llistPop(ready);
+            execNode = llistPop(ready);
+            execProc = nodeItem(execNode);
+
             if (prevProc != execProc) processRunPrint(curTime, execProc);
 
             // Check if this is an unstarted process
@@ -216,7 +220,7 @@ stats_t RR(FILE* f, int q, char* memStrat) {
         // Skip "gaps" in time
         if (nextProc && llistLen(ready) == 0 && !execProc) {
             curTime = roundq(processArrivalTime(nextProc), q);
-            llistAppend(input, nextProc);
+            llistAppend(input, llistNode(nextProc));
             nextProc = processRead(f);
         }
 
@@ -296,7 +300,7 @@ stats_t SJF(FILE* f, int q, char* memStrat) {
         
         // Add all the jobs that arrive to input queue
         while (nextProc && processArrivalTime(nextProc) <= curTime) {
-            llistAppend(input, nextProc);
+            llistAppend(input, llistNode(nextProc));
             nextProc = processRead(f);
         }
 
@@ -327,7 +331,7 @@ stats_t SJF(FILE* f, int q, char* memStrat) {
         // Skip "gaps" in time
         if (nextProc && heapLen(ready) == 0 && !execProc) {
             curTime = roundq(processArrivalTime(nextProc), q);
-            llistAppend(input, nextProc);
+            llistAppend(input, llistNode(nextProc));
             nextProc = processRead(f);
         }
 
