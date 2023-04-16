@@ -11,7 +11,7 @@ Inspiration taken from https://www.sanfoundry.com/c-program-implement-heap/
 #include <assert.h>
 #include "heap.h"
 
-#define INIT_SIZE 10 // Abitrary initial size
+#define INIT_SIZE 4 // Abitrary initial size
 
 struct heap {
     void** heap;
