@@ -136,7 +136,7 @@ stats_t RR(FILE* f, int q, char* memStrat) {
     while (ready->n > 0 || input->n > 0 || nextProc || execProc) {
 
         // Check to see if the process finished in this quantum
-        if (execProc && execProc->remainingTime <= 0) {
+        if (execProc && processRemainingTime(execProc) <= 0) {
 
             // Terminate the real process
             char* hash = processTerm(curTime, execProc);
@@ -145,14 +145,17 @@ stats_t RR(FILE* f, int q, char* memStrat) {
 
             statsUpdate(curTime, &stats, execProc);
 
-            if (memory) memoryFree(memory, execProc->memoryAssignAt);
+            if (memory) {
+                memoryFree(memory, processMemoryAssignedAt(execProc));
+            }
+
             processFree(execProc);
             execProc = NULL;
             
         }
 
         // Add all the jobs that have arrived to input queue
-        while (nextProc && nextProc->arrivalTime <= curTime) {
+        while (nextProc && processArrivalTime(nextProc) <= curTime) {
             llistAppend(input, nextProc);
             nextProc = processRead(f);
         }
@@ -181,16 +184,21 @@ stats_t RR(FILE* f, int q, char* memStrat) {
             if (prevProc != execProc) processRunPrint(curTime, execProc);
 
             // Check if this is an unstarted process
-            if (execProc->serviceTime == execProc->remainingTime) {
+            if (processServiceTime(execProc) ==
+                processRemainingTime(execProc)) {
+
                 // Create and execute a real process
                 processCreate(curTime, execProc, inputFD, outputFD);
                 stats.numProcesses++;
+
             } else {
+
                 // Continue the real process
                 processCont(curTime, execProc);
+                
             }
 
-            execProc->remainingTime -= q;
+            processIncrement(execProc, q);
 
         }
         
@@ -199,7 +207,7 @@ stats_t RR(FILE* f, int q, char* memStrat) {
 
         // Skip "gaps" in time
         if (nextProc && ready->n == 0 && !execProc) {
-            curTime = roundq(nextProc->arrivalTime, q);
+            curTime = roundq(processArrivalTime(nextProc), q);
             llistAppend(input, nextProc);
             nextProc = processRead(f);
         }
@@ -244,10 +252,10 @@ stats_t SJF(FILE* f, int q, char* memStrat) {
 
         if (execProc) {
 
-            execProc->remainingTime -= q;
+            processIncrement(execProc, q);
             
             // Check if running process has completed
-            if (execProc->remainingTime <= 0) {
+            if (processRemainingTime(execProc) <= 0) {
                 
                 // Terminate the real process
                 char* hash = processTerm(curTime, execProc);
@@ -257,7 +265,10 @@ stats_t SJF(FILE* f, int q, char* memStrat) {
                 
                 statsUpdate(curTime, &stats, execProc);
 
-                if (memory) memoryFree(memory, execProc->memoryAssignAt);
+                if (memory) {
+                    memoryFree(memory, processMemoryAssignedAt(execProc));
+                }
+
                 processFree(execProc);
                 execProc = NULL;
 
@@ -271,7 +282,7 @@ stats_t SJF(FILE* f, int q, char* memStrat) {
         }
         
         // Add all the jobs that arrive to input queue
-        while (nextProc && nextProc->arrivalTime <= curTime) {
+        while (nextProc && processArrivalTime(nextProc) <= curTime) {
             llistAppend(input, nextProc);
             nextProc = processRead(f);
         }
@@ -304,7 +315,7 @@ stats_t SJF(FILE* f, int q, char* memStrat) {
 
         // Skip "gaps" in time
         if (nextProc && ready->n == 0 && !execProc) {
-            curTime = roundq(nextProc->arrivalTime, q);
+            curTime = roundq(processArrivalTime(nextProc), q);
             llistAppend(input, nextProc);
             nextProc = processRead(f);
         }
@@ -344,7 +355,7 @@ void processCreate(int time, process_t* proc, int inputFD[2], int outputFD[2]) {
         close(outputFD[1]);
 
         // Execute child process
-        char *args[] = {"./process", proc->name, NULL};
+        char *args[] = {"./process", processName(proc), NULL};
         execvp(args[0], args);
 
         // execvp only returns if unsucessful or if there was an error
@@ -352,9 +363,7 @@ void processCreate(int time, process_t* proc, int inputFD[2], int outputFD[2]) {
 
     } else {
 
-        proc->realPID = childPID;
-        proc->readInFD = inputFD[1];
-        proc->writeOutFD = outputFD[0];
+        processSetReal(proc, childPID, inputFD[1], outputFD[0]);
 
         close(inputFD[0]);
         close(outputFD[1]);
@@ -379,13 +388,13 @@ void processCont(int time, process_t* proc) {
     
     // Write continued time to child process
     char* timeBytes = toBigEndian(time);
-    write(proc->readInFD, timeBytes, NUM_ENDIAN_BYTES);
+    write(processReadInFD(proc), timeBytes, NUM_ENDIAN_BYTES);
     
-    kill(proc->realPID, SIGCONT);
+    kill(processRealPID(proc), SIGCONT);
     
     // Read 1 byte
     char readByte[1];
-    read(proc->writeOutFD, readByte, 1);
+    read(processWriteOutFD(proc), readByte, 1);
 
     // Verify read byte is the same as last byte send
     assert(readByte[0] == timeBytes[NUM_ENDIAN_BYTES-1]);
@@ -397,16 +406,16 @@ void processSuspend(int time, process_t* proc) {
     
     // Write suspended time to child process
     char* timeBytes = toBigEndian(time);
-    write(proc->readInFD, timeBytes, NUM_ENDIAN_BYTES);
+    write(processReadInFD(proc), timeBytes, NUM_ENDIAN_BYTES);
     free(timeBytes);
     
-    kill(proc->realPID, SIGTSTP);
+    kill(processRealPID(proc), SIGTSTP);
 
     // Wait for process to enter a stopped state
     int wstatus;
     pid_t w;
     do {
-        w = waitpid(proc->realPID, &wstatus, WUNTRACED);
+        w = waitpid(processRealPID(proc), &wstatus, WUNTRACED);
         assert(w != -1);
     } while (!WIFSTOPPED(wstatus));
 
@@ -416,15 +425,15 @@ char* processTerm(int time, process_t* proc) {
     
     // Write termination time to child process
     char* timeBytes = toBigEndian(time);
-    write(proc->readInFD, timeBytes, NUM_ENDIAN_BYTES);
+    write(processReadInFD(proc), timeBytes, NUM_ENDIAN_BYTES);
     free(timeBytes);
 
-    kill(proc->realPID, SIGTERM);
+    kill(processRealPID(proc), SIGTERM);
     
     // Read and print the hash
     char* hash = malloc(SHA_LEN+1);
     assert(hash);
-    read(proc->writeOutFD, hash, SHA_LEN);
+    read(processWriteOutFD(proc), hash, SHA_LEN);
     hash[SHA_LEN] = '\0'; // End the string with null byte
     
     return hash;
@@ -432,9 +441,9 @@ char* processTerm(int time, process_t* proc) {
 }
 
 void statsUpdate(int time, stats_t* stats, process_t* proc) {
-    int curTurnaround = time - proc->arrivalTime;
+    int curTurnaround = time - processArrivalTime(proc);
     stats->totTurnaround += curTurnaround;
-    double curOverhead = (double)curTurnaround/proc->serviceTime;
+    double curOverhead = (double)curTurnaround/processServiceTime(proc);
     stats->totOverhead += curOverhead;
     stats->maxOverhead = fmax(stats->maxOverhead, curOverhead);
 }

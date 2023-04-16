@@ -13,6 +13,15 @@ record.c : Implmentation of a process record
 
 #define MAX_NAME_LEN 8
 
+struct process {
+    int arrivalTime;
+    char* name;
+    int serviceTime, remainingTime;
+    int memoryRequirement, memoryAssignAt;
+    int realPID;
+    int readInFD, writeOutFD;
+};
+
 process_t* processRead(FILE* f) {
 
     process_t* proc = malloc(sizeof(*proc));
@@ -58,6 +67,20 @@ int processCompare(void* a, void* b) {
 
 }
 
+void processIncrement(process_t* proc, int q) {
+    proc->remainingTime -= q;
+}
+
+void processAssignMemory(process_t* proc, int assignedAt) {
+    proc->memoryAssignAt = assignedAt;
+}
+
+void processSetReal(process_t* proc, int PID, int readInFD, int writeOutFD) {
+    proc->realPID = PID;
+    proc->readInFD = readInFD;
+    proc->writeOutFD = writeOutFD;
+}
+
 void processReadyPrint(int time, process_t* proc) {
     printf("%d,READY,process_name=%s,assigned_at=%d\n",
             time, proc->name, proc->memoryAssignAt);
@@ -78,4 +101,42 @@ void processFinPrint(int time, process_t* proc, int procRemaining, char* hash) {
 void processFree(process_t* proc) {
     free(proc->name);
     free(proc);
+}
+
+/*                                   Getters                                  */
+
+char* processName(process_t* proc) {
+    return proc->name;
+}
+
+int processServiceTime(process_t* proc) {
+    return proc->serviceTime;
+}
+
+int processRemainingTime(process_t* proc) {
+    return proc->remainingTime;
+}
+
+int processArrivalTime(process_t* proc) {
+    return proc->arrivalTime;
+}
+
+int processMemoryRequirement(process_t* proc) {
+    return proc->memoryRequirement;
+}
+
+int processMemoryAssignedAt(process_t* proc) {
+    return proc->memoryAssignAt;
+}
+
+int processRealPID(process_t* proc) {
+    return proc->realPID;
+}
+
+int processWriteOutFD(process_t* proc) {
+    return proc->writeOutFD;
+}
+
+int processReadInFD(process_t* proc) {
+    return proc->readInFD;
 }

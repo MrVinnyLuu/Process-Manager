@@ -28,10 +28,10 @@ process_t* memoryAssign(int time, linkedList_t* memory, linkedList_t* input) {
     // If infinite memory, no need to assign memory
     if (!memory) return proc;
 
-    int assignedAt = memoryAlloc(memory, proc->memoryRequirement);
+    int assignedAt = memoryAlloc(memory, processMemoryRequirement(proc));
 
     if (assignedAt != -1) {
-        proc->memoryAssignAt = assignedAt;
+        processAssignMemory(proc, assignedAt);
         processReadyPrint(time, proc);
         return proc;
     } else {
