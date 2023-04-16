@@ -131,8 +131,8 @@ stats_t RR(FILE* f, int q, char* memStrat) {
 
     // Ready in first process
     process_t* prevProc = NULL;
-    process_t* execProc = NULL;
     listNode_t* execNode = NULL;
+    process_t* execProc = NULL;
     process_t* nextProc = processRead(f);
 
     // First process always arrives at time 0 according to spec
@@ -157,8 +157,8 @@ stats_t RR(FILE* f, int q, char* memStrat) {
                 memoryFree(memory, processMemoryAssignedAt(execProc));
             }
 
-            processFree(execProc);
             free(execNode);
+            processFree(execProc);
             execProc = NULL;
             
         }
@@ -181,7 +181,9 @@ stats_t RR(FILE* f, int q, char* memStrat) {
         // If running process is not finished:
         if (execProc) {
             // Suspend the real process if there are other processes to be run
-            if (llistLen(ready) > 0) processSuspend(curTime, execProc, endianBuf);
+            if (llistLen(ready) > 0) {
+                processSuspend(curTime, execProc, endianBuf);
+            }
             // Re-queue
             llistAppend(ready, execNode);
         }
