@@ -7,6 +7,7 @@ main.c : main program
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdint.h>
 #include <string.h>
 #include <assert.h>
 #include <ctype.h>
@@ -44,16 +45,17 @@ typedef struct stats {
 stats_t SJF(FILE* f, int q, char* memStrat);
 stats_t RR(FILE* f, int q, char* memStrat);
 
-void processCreate(int time, process_t* proc, int inputFD[2], int outputFD[2]);
-void processCont(int time, process_t* proc);
-void processSuspend(int time, process_t* proc);
-char* processTerm(int time, process_t* proc);
+void processCreate(int time, process_t* proc, int inputFD[2], int outputFD[2],
+    uint8_t* endianBuf);
+void processCont(int time, process_t* proc, uint8_t* endianBuf);
+void processSuspend(int time, process_t* proc, uint8_t* endianBuf);
+char* processTerm(int time, process_t* proc, uint8_t* endianBuf);
 
 void statsUpdate(int time, stats_t* stats, process_t* proc);
 void statsFinalise(int time, stats_t* stats);
 
 int roundq(int time, int quantum);
-char* toBigEndian(int number);
+void toBigEndian(uint32_t number, uint8_t* bytes);
 
 /******************************************************************************/
 
@@ -124,6 +126,8 @@ stats_t RR(FILE* f, int q, char* memStrat) {
     }
     
     int inputFD[2], outputFD[2];
+    uint8_t* endianBuf = malloc(NUM_ENDIAN_BYTES*sizeof(uint8_t*));
+    assert(endianBuf);
 
     // Ready in first process
     process_t* prevProc = NULL;
@@ -139,7 +143,7 @@ stats_t RR(FILE* f, int q, char* memStrat) {
         if (execProc && processRemainingTime(execProc) <= 0) {
 
             // Terminate the real process
-            char* hash = processTerm(curTime, execProc);
+            char* hash = processTerm(curTime, execProc, endianBuf);
 
             processFinPrint(curTime, execProc,
                 llistLen(ready) + llistLen(input), hash);
@@ -175,7 +179,7 @@ stats_t RR(FILE* f, int q, char* memStrat) {
         // If running process is not finished:
         if (execProc) {
             // Suspend the real process if there are other processes to be run
-            if (llistLen(ready) > 0) processSuspend(curTime, execProc);
+            if (llistLen(ready) > 0) processSuspend(curTime, execProc, endianBuf);
             // Re-queue
             llistAppend(ready, execProc);
         }
@@ -192,13 +196,13 @@ stats_t RR(FILE* f, int q, char* memStrat) {
                 processRemainingTime(execProc)) {
 
                 // Create and execute a real process
-                processCreate(curTime, execProc, inputFD, outputFD);
+                processCreate(curTime, execProc, inputFD, outputFD, endianBuf);
                 stats.numProcesses++;
 
             } else {
 
                 // Continue the real process
-                processCont(curTime, execProc);
+                processCont(curTime, execProc, endianBuf);
 
             }
 
@@ -225,6 +229,7 @@ stats_t RR(FILE* f, int q, char* memStrat) {
     llistFree(ready);
     llistFree(input);
     if (memory) llistFree(memory);
+    free(endianBuf);
 
     return stats;
 
@@ -244,6 +249,8 @@ stats_t SJF(FILE* f, int q, char* memStrat) {
     }
 
     int inputFD[2], outputFD[2];
+    uint8_t* endianBuf = malloc(NUM_ENDIAN_BYTES*sizeof(uint8_t*));
+    assert(endianBuf);
 
     // Ready in first process
     process_t* execProc = NULL;
@@ -262,7 +269,7 @@ stats_t SJF(FILE* f, int q, char* memStrat) {
             if (processRemainingTime(execProc) <= 0) {
                 
                 // Terminate the real process
-                char* hash = processTerm(curTime, execProc);
+                char* hash = processTerm(curTime, execProc, endianBuf);
                 
                 processFinPrint(curTime, execProc,
                     heapLen(ready) + llistLen(input), hash);
@@ -281,7 +288,7 @@ stats_t SJF(FILE* f, int q, char* memStrat) {
             } else {
                 
                 // Continue the real process
-                processCont(curTime, execProc);
+                processCont(curTime, execProc, endianBuf);
 
             }
 
@@ -308,9 +315,7 @@ stats_t SJF(FILE* f, int q, char* memStrat) {
             processRunPrint(curTime, execProc);
 
             // Create and execute a real process
-            processCreate(curTime, execProc, inputFD, outputFD);
-
-            
+            processCreate(curTime, execProc, inputFD, outputFD, endianBuf);
 
             stats.numProcesses++;
             
@@ -334,6 +339,7 @@ stats_t SJF(FILE* f, int q, char* memStrat) {
     heapFree(ready);
     llistFree(input);
     if (memory) llistFree(memory);
+    free(endianBuf);
 
     return stats;
 
@@ -341,7 +347,8 @@ stats_t SJF(FILE* f, int q, char* memStrat) {
 
 /*                         CONTROLLING REAL PROCESSES                         */
 
-void processCreate(int time, process_t* proc, int inputFD[2], int outputFD[2]) {
+void processCreate(int time, process_t* proc, int inputFD[2], int outputFD[2],
+    uint8_t* endianBuf) {
     
     // Set up and check pipes
     assert(pipe(inputFD) == 0 && pipe(outputFD) == 0);
@@ -375,45 +382,43 @@ void processCreate(int time, process_t* proc, int inputFD[2], int outputFD[2]) {
         close(outputFD[1]);
 
         // Send start time to child process
-        char *timeBytes = toBigEndian(time);
-        write(inputFD[1], timeBytes, NUM_ENDIAN_BYTES);
+
+        toBigEndian(time, endianBuf);
+        write(processReadInFD(proc), endianBuf, NUM_ENDIAN_BYTES);
 
         // Read 1 byte
-        char readByte[1];
-        read(outputFD[0], readByte, 1);
+        uint8_t readByte[1];
+        read(processWriteOutFD(proc), readByte, 1);
 
         // Verify read byte is the same as last byte send
-        assert(readByte[0] == timeBytes[NUM_ENDIAN_BYTES-1]);
-        free(timeBytes);
+        assert(readByte[0] == endianBuf[NUM_ENDIAN_BYTES-1]);
 
     }
 
 }
 
-void processCont(int time, process_t* proc) {
+void processCont(int time, process_t* proc, uint8_t* endianBuf) {
     
     // Write continued time to child process
-    char* timeBytes = toBigEndian(time);
-    write(processReadInFD(proc), timeBytes, NUM_ENDIAN_BYTES);
+    toBigEndian(time, endianBuf);
+    write(processReadInFD(proc), endianBuf, NUM_ENDIAN_BYTES);
     
     kill(processRealPID(proc), SIGCONT);
     
     // Read 1 byte
-    char readByte[1];
+    uint8_t readByte[1];
     read(processWriteOutFD(proc), readByte, 1);
 
     // Verify read byte is the same as last byte send
-    assert(readByte[0] == timeBytes[NUM_ENDIAN_BYTES-1]);
-    free(timeBytes);
+    assert(readByte[0] == endianBuf[NUM_ENDIAN_BYTES-1]);
 
 }
 
-void processSuspend(int time, process_t* proc) {
+void processSuspend(int time, process_t* proc, uint8_t* endianBuf) {
     
     // Write suspended time to child process
-    char* timeBytes = toBigEndian(time);
-    write(processReadInFD(proc), timeBytes, NUM_ENDIAN_BYTES);
-    free(timeBytes);
+    toBigEndian(time, endianBuf);
+    write(processReadInFD(proc), endianBuf, NUM_ENDIAN_BYTES);
     
     kill(processRealPID(proc), SIGTSTP);
 
@@ -427,12 +432,11 @@ void processSuspend(int time, process_t* proc) {
 
 }
 
-char* processTerm(int time, process_t* proc) {
+char* processTerm(int time, process_t* proc, uint8_t* endianBuf) {
     
     // Write termination time to child process
-    char* timeBytes = toBigEndian(time);
-    write(processReadInFD(proc), timeBytes, NUM_ENDIAN_BYTES);
-    free(timeBytes);
+    toBigEndian(time, endianBuf);
+    write(processReadInFD(proc), endianBuf, NUM_ENDIAN_BYTES);
 
     kill(processRealPID(proc), SIGTERM);
     
@@ -469,22 +473,15 @@ int roundq(int time, int quantum) {
     return (time%quantum == 0) ? time : (time/quantum+1)*quantum;
 }
 
-/* Convert 32-bit integer into Big Endian Btye Ordering */
-char* toBigEndian(int number) {
-
-    int* p = &number;
-
-    char* bytePtr = (char*)p;
-
-    char* bytes = malloc(NUM_ENDIAN_BYTES);
-    assert(bytes);
-
-    for (int i = 0; i < NUM_ENDIAN_BYTES; i++) {
-        bytes[i] = bytePtr[NUM_ENDIAN_BYTES-1-i];
+/* Convert 32-bit integer (number) into Big Endian Btye Ordering (endianBuf) */
+/* Adapted from the top answer in this thread:
+   https://stackoverflow.com/questions/3784263/
+   converting-an-int-into-a-4-byte-char-array-c */
+void toBigEndian(uint32_t number, uint8_t* bytes) {
+    for (int i = NUM_ENDIAN_BYTES-1; i >= 0; i--) {
+        bytes[i] = number & 0xFF;
+        number >>= 8;
     }
-
-    return bytes;
-
 }
 
 /******************************************************************************/
