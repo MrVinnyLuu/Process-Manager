@@ -18,7 +18,6 @@ typedef struct memBlock {
 
 int memoryAlloc(linkedList_t* memory, int size);
 
-
 void memoryInit(linkedList_t* memory, int maxMemory) {
     memBlock_t* firstBlock = malloc(sizeof(*firstBlock));
     assert(firstBlock);

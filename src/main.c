@@ -166,8 +166,9 @@ stats_t RR(FILE* f, int q, char* memStrat) {
         // Try allocate memory to all processes in input queue
         int n = llistLen(input);
         for (int i = 0; i < n; i++) {
+            // memoryAssign() pops, tries to allocate & requeues if unsucessful
             process_t* proc = memoryAssign(curTime, memory, input);
-            // If successful memory allocation, move to ready queue
+            // If successful, move to ready queue
             if (proc) llistAppend(ready, proc);
         }
 
