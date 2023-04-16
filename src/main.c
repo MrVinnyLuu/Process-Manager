@@ -251,7 +251,7 @@ stats_t SJF(FILE* f, int q, char* memStrat) {
     // First process always arrives at time 0 according to spec
     int curTime = 0;
 
-    while (ready->n > 0 || llistLen(input) > 0 || nextProc || execProc) {
+    while (heapLen(ready) > 0 || llistLen(input) > 0 || nextProc || execProc) {
 
         if (execProc) {
 
@@ -263,7 +263,9 @@ stats_t SJF(FILE* f, int q, char* memStrat) {
                 // Terminate the real process
                 char* hash = processTerm(curTime, execProc);
                 
-                processFinPrint(curTime, execProc, ready->n + llistLen(input), hash);
+                processFinPrint(curTime, execProc,
+                    heapLen(ready) + llistLen(input), hash);
+
                 free(hash);
                 
                 statsUpdate(curTime, &stats, execProc);
@@ -299,7 +301,7 @@ stats_t SJF(FILE* f, int q, char* memStrat) {
         }
 
         // If no proc running, get and run shortest process (if there are any)
-        if (!execProc && ready->n > 0) {
+        if (!execProc && heapLen(ready) > 0) {
 
             execProc = heapPop(ready, processCompare);
             processRunPrint(curTime, execProc);
@@ -317,7 +319,7 @@ stats_t SJF(FILE* f, int q, char* memStrat) {
         curTime += q;
 
         // Skip "gaps" in time
-        if (nextProc && ready->n == 0 && !execProc) {
+        if (nextProc && heapLen(ready) == 0 && !execProc) {
             curTime = roundq(processArrivalTime(nextProc), q);
             llistAppend(input, nextProc);
             nextProc = processRead(f);

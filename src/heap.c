@@ -13,6 +13,12 @@ Inspiration taken from https://www.sanfoundry.com/c-program-implement-heap/
 
 #define INIT_SIZE 10 // Abitrary initial size
 
+struct heap {
+    void** heap;
+    int n;
+    int size;
+};
+
 heap_t* heapInit() {
 
     heap_t* heap = malloc(sizeof(*heap));
@@ -95,4 +101,8 @@ void* heapPop(heap_t* heap, int (compare)(void*,void*)) {
 void heapFree(heap_t* heap) {
     free(heap->heap);
     free(heap);
+}
+
+int heapLen(heap_t* heap) {
+    return heap->n;
 }
